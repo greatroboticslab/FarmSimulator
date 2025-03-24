@@ -67,6 +67,8 @@ public class MainCam : MonoBehaviour
 			}
 		}
 		
+		
+		//Chasecam
 		if(mode == 1) {
 			currentFocusPoint = Vector3.Lerp(currentFocusPoint, focusedRobot.transform.position, Time.deltaTime * 5.0f);
 			transform.LookAt(currentFocusPoint);
@@ -112,6 +114,8 @@ public class MainCam : MonoBehaviour
 					
 					if(Input.GetMouseButtonDown(0)) {
 						PathMaker.Instance.selectedRobot = ri;
+						PathMaker.Instance.humanoid = ri.humanoid;
+						PathMaker.Instance.useTractor = ri.includeTractor;
 						mode = 0;
 						transform.position = Vector3.zero;
 						PathMaker.Instance.coordMenu.SetActive(true);
@@ -178,7 +182,14 @@ public class MainCam : MonoBehaviour
         	if(chaseCam) {
         		if(focusedRobot != null) {
         			//targetPos = focusedRobot.transform.position;
-					targetPos = focusedRobot.GetComponent<DebugRover>().camOrg.transform.position;
+					
+					
+					if(PathMaker.Instance.humanoid) {
+						targetPos = focusedRobot.transform.position + new Vector3(5,2,5);
+					}
+					else {
+						targetPos = focusedRobot.GetComponent<DebugRover>().camOrg.transform.position;
+					}
         		}
 				
 				if(!isVRCam) {

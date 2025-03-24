@@ -35,13 +35,23 @@ public class PlotHelper : MonoBehaviour
 			newPlot.GetComponent<PlantZone>().actionType = 0;
 		}
 		else {
-			newPlot.GetComponent<PlantZone>().actionType = PathMaker.Instance.rover.robotType;
+			if(PathMaker.Instance.humanoid) {
+				newPlot.GetComponent<PlantZone>().actionType = 2;
+			}
+			else {
+				newPlot.GetComponent<PlantZone>().actionType = PathMaker.Instance.rover.robotType;
+			}
 		}
 		newPlot.GetComponent<PlantZone>().weedDensity = weedDensity;
 		newPlot.transform.position = transform.position;
 		newPlot.transform.localScale = new Vector3(size.x,20,size.y);
 		PathMaker.Instance.roverControls.plantMenu.SetActive(false);
-		PathMaker.Instance.rover.wantsToTeleport = true;
+		if(PathMaker.Instance.humanoid) {
+			PathMaker.Instance.humanoidRobot.wantsToTeleport = true;
+		}
+		else {
+			PathMaker.Instance.rover.wantsToTeleport = true;
+		}
 		//Destroy(gameObject);
 	}
 }

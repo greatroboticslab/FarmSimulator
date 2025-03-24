@@ -16,6 +16,7 @@ public class PathMaker : MonoBehaviour
 	};
 	
 	public static PathMaker Instance;
+	public Actor actor;
 	public DebugRover rover;
 	public RoverControls roverControls;
 	
@@ -41,12 +42,14 @@ public class PathMaker : MonoBehaviour
 	public string mqttIp = "127.0.0.1";
 	
 	public bool mapReady;
+	public bool placedDown;
 	
 	public OnlineMaps map;
 	
 	public MainCam mainCam;
 	public GameObject placeCamOrg;
 	public GameObject coordMenu;
+	public PosDisplay posDisplay;
 	
 	public Manip manip;
 	public GameObject plotControls;
@@ -56,6 +59,15 @@ public class PathMaker : MonoBehaviour
 	public GameObject selectedCrop;
 	public int selectedCropId;
 	public RobotInfo selectedRobot;
+	public bool humanoid;
+	public bool useTractor;
+	public GameObject tractorPrefab;
+	public GameObject basketRoverPrefab;
+	public HumanoidRobot humanoidRobot;
+	public Tractor tractor;
+	public FollowerRover basketRover;
+	private float hSpawnTime = 0f;
+	public GameObject currentRobot;
 	
 	public bool VR;
 	
@@ -97,6 +109,59 @@ public class PathMaker : MonoBehaviour
 		return le;
 	}
 	
+	public void PlaceDown(HumanoidRobot hr) {
+		
+		float initialHeight = 350f; // Start height for the raycast
+		float stepHeight = 10f; // Step height for each progressive raycast
+		int maxSteps = 50; // Maximum number of steps to attempt
+		Vector3 rayPos = new Vector3(512, initialHeight, 512);
+		RaycastHit hit;
+
+		for (int i = 0; i < maxSteps; i++)
+		{
+			Debug.Log(rayPos);
+			// Check if the raycast hits the terrain
+			if (Physics.Raycast(rayPos, Vector3.down, out hit, stepHeight))
+			{
+				hr.transform.position = new Vector3(rayPos.x, hit.point.y + 1.4f, rayPos.z);
+				//hr.GetComponent<Rigidbody>().isKinematic = false;
+				
+				//Spawn with a tractor
+				if(useTractor) {
+					if(tractor == null) {
+						GameObject newTractor = Instantiate(tractorPrefab);
+						tractor = newTractor.GetComponent<Tractor>();
+					}
+					tractor.transform.position = new Vector3(rayPos.x + 3, hit.point.y + 2.4f, rayPos.z + 3);
+				}
+				//Spawn without a tractor, use a basket rover instead
+				else {
+					if(basketRover == null) {
+						GameObject newBask = Instantiate(basketRoverPrefab);
+						basketRover = newBask.GetComponent<FollowerRover>();
+					}
+					basketRover.leader = hr.gameObject;
+					basketRover.transform.position = new Vector3(rayPos.x + 3, hit.point.y + 1.2f, rayPos.z + 3);
+					hr.basketRover = basketRover;
+				}
+				
+				/*
+				for(int j = 0; j < hr.joints.Length; j++) {
+					hr.joints[j].rb.isKinematic = true;
+					hr.joints[j].gameObject.transform.position += new Vector3(rayPos.x, hit.point.y + 1.4f, rayPos.z);
+					hr.joints[j].rb.velocity = Vector3.zero;
+					hr.joints[j].rb.angularVelocity = Vector3.zero;
+					hr.joints[j].rb.isKinematic = false;
+				}
+				*/
+				return;
+			}
+			// Decrease the raycast height for the next step
+			rayPos.y -= stepHeight;
+		}
+		
+	}
+	
 	public void LoadSubscene(string n) {
 		currentLocationName = n;
 		foreach(Subscene s in subscenes) {
@@ -111,7 +176,17 @@ public class PathMaker : MonoBehaviour
     void Update()
     {
 		
-		
+		if(humanoid) {
+			if(mapReady && !placedDown) {
+				if(hSpawnTime > 3f) {
+					placedDown = true;
+					PlaceDown(Instance.currentRobot.GetComponent<HumanoidRobot>());
+				}
+				if(!placedDown) {
+					hSpawnTime += Time.deltaTime;
+				}
+			}
+		}
 		
 		//Debug.Log(rStick);
 		
@@ -125,6 +200,9 @@ public class PathMaker : MonoBehaviour
 			}
 		}
 		*/
+		if(Input.GetKeyDown("c")) {
+			PlaceDown(PathMaker.Instance.currentRobot.GetComponent<HumanoidRobot>());
+		}
 		
         selectedCrop = cropList[selectedCropId];
     }

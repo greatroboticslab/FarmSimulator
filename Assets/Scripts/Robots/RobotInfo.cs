@@ -13,12 +13,16 @@ public class RobotInfo : MonoBehaviour
 	private Vector3 sizeGoal;
 	public bool chaseCam;
 	public bool terrain;
+	public bool humanoid;
+	public bool includeTractor;
 
     // Start is called before the first frame update
     void Start()
     {
         sizeGoal = new Vector3(1f,1f,1f);
-		floatingText.GetComponent<TMP_Text>().text = robot.GetComponent<DebugRover>().robotName;
+		if(!humanoid) {
+			floatingText.GetComponent<TMP_Text>().text = robot.GetComponent<DebugRover>().robotName;
+		}
     }
 
     // Update is called once per frame

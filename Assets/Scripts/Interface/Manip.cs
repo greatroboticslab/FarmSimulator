@@ -18,6 +18,7 @@ public class Manip : MonoBehaviour
 	public bool freeCam;
 	public PosDisplay pd;
 	
+	public GameObject smallCamScreen;
 	public GameObject fullCamScreen;
 	private bool fullView;
 
@@ -98,32 +99,49 @@ public class Manip : MonoBehaviour
 		Cursor.lockState = CursorLockMode.None;
     	cam.chaseCam = robotInfo.chaseCam;
     	curRobot = Instantiate(robotInfo.robot);
+		if(PathMaker.Instance.humanoid) {
+			curRobot.GetComponent<HumanoidRobot>().actor = PathMaker.Instance.actor;
+			PathMaker.Instance.humanoidRobot = curRobot.GetComponent<HumanoidRobot>();
+		}
+		PathMaker.Instance.currentRobot = curRobot;
     	curRobot.transform.position = Vector3.zero;
     	cam.camPos = new Vector3(0.4f,1,-0.4f);
     	cam.targetPos = new Vector3(0,1.0f,0);
     	cam.focusedRobot = curRobot;
     	if(robotInfo.terrain) {
     		terrain = Instantiate(selectedTerrain);
-    		curRobot.GetComponent<DebugRover>().mapInfo = terrain.GetComponent<MapInfo>();
-    		curRobot.transform.position = curRobot.GetComponent<DebugRover>().mapInfo.spawn.position;
-    		cam.camPos = curRobot.GetComponent<DebugRover>().mapInfo.spawn.position;
+			/*
+			if(!PathMaker.Instance.humanoid) {
+				curRobot.GetComponent<DebugRover>().mapInfo = terrain.GetComponent<MapInfo>();
+				curRobot.transform.position = curRobot.GetComponent<DebugRover>().mapInfo.spawn.position;
+				cam.camPos = curRobot.GetComponent<DebugRover>().mapInfo.spawn.position;
+			}
+			*/
+			if(!PathMaker.Instance.humanoid) {
+				curRobot.GetComponent<DebugRover>().mapInfo = terrain.GetComponent<MapInfo>();
+			}
+			curRobot.transform.position = terrain.GetComponent<MapInfo>().spawn.position;
+			cam.camPos = terrain.GetComponent<MapInfo>().spawn.position;
     	}
-    	botCam = curRobot.GetComponent<DebugRover>().camera;
-    	pd.rover = curRobot.GetComponent<DebugRover>();
-		if(!PathMaker.Instance.VR) {
-			cam.transform.position = curRobot.GetComponent<DebugRover>().camOrg.transform.position;
+		if(!PathMaker.Instance.humanoid) {
+			botCam = curRobot.GetComponent<DebugRover>().camera;
+			pd.rover = curRobot.GetComponent<DebugRover>();
+			if(!PathMaker.Instance.VR) {
+				cam.transform.position = curRobot.GetComponent<DebugRover>().camOrg.transform.position;
+			}
+			else {
+				cam.cc.enabled = false;
+				cam.transform.position = curRobot.GetComponent<DebugRover>().camOrg.transform.position;
+				cam.cc.enabled = true;
+			}
+			
+			
+			if(SocketInterace.Instance != null) {
+				SocketInterace.Instance.Connect();
+				SocketInterace.Instance.rover = curRobot.GetComponent<DebugRover>();
+			}
 		}
-		else {
-			cam.cc.enabled = false;
-			cam.transform.position = curRobot.GetComponent<DebugRover>().camOrg.transform.position;
-			cam.cc.enabled = true;
-		}
-		
 		PathMaker.Instance.placeCamOrg.transform.position = curRobot.transform.position + new Vector3(0,20,0);
-		if(SocketInterace.Instance != null) {
-			SocketInterace.Instance.Connect();
-			SocketInterace.Instance.rover = curRobot.GetComponent<DebugRover>();
-		}
     }
 
     // Update is called once per frame
@@ -268,8 +286,10 @@ public class Manip : MonoBehaviour
 			
         	
         }
+		
         
         //Switch camera
+		/*
         if(Input.GetKeyDown("space")) {
         	if(freeCam) {
         		freeCam = false;
@@ -286,6 +306,7 @@ public class Manip : MonoBehaviour
         		botCam.enabled = false;
         	}
         }
+		*/
         
     }
 	

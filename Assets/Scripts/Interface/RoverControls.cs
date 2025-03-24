@@ -35,6 +35,10 @@ public class RoverControls : MonoBehaviour
 			PathMaker.Instance.rover.scienceQA = scienceQA.isOn;
 		}
 		
+		if(PathMaker.Instance.humanoidRobot != null) {
+			PathMaker.Instance.humanoidRobot.selfDriving = selfDriving.isOn;
+		}
+		
 		if(timeSinceRecordingStarted >= 5) {
 			recordingNotification.SetActive(false);
 		}

@@ -32,7 +32,6 @@ public class CoordSelector : MonoBehaviour
 	public TMP_Text curRobotDisplay;
 	public string currentLocation;
 	
-	
     // Start is called before the first frame update
     void Start()
     {
@@ -76,12 +75,19 @@ public class CoordSelector : MonoBehaviour
 			dropdown.captionText.text = locations[0].name;
 		}
 		
+		SelectRobot();
+		
     }
 
     // Update is called once per frame
     void Update()
     {
-        curRobotDisplay.text = "Current Robot: " + PathMaker.Instance.selectedRobot.robot.GetComponent<DebugRover>().robotName;
+		if(PathMaker.Instance.humanoid) {
+			curRobotDisplay.text = "Current Robot: Humanoid";
+		}
+		else {
+			curRobotDisplay.text = "Current Robot: " + PathMaker.Instance.selectedRobot.robot.GetComponent<DebugRover>().robotName;
+		}
     }
 	
 	public void SelectRobot() {
@@ -102,6 +108,11 @@ public class CoordSelector : MonoBehaviour
 		PathMaker.Instance.mapCoords = new Vector2(_lng,_lat);
 		PathMaker.Instance.LoadSubscene(currentLocation);
 		PathMaker.Instance.mapReady = true;
+		
+		PathMaker.Instance.posDisplay.gameObject.SetActive(true);
+		PathMaker.Instance.posDisplay.powText.gameObject.SetActive(true);
+		PathMaker.Instance.posDisplay.moistureText.gameObject.SetActive(true);
+		PathMaker.Instance.manip.smallCamScreen.SetActive(true);
 		
 		gameObject.SetActive(false);
 		ContextMenu.SetActive(true);

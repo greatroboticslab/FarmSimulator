@@ -525,6 +525,7 @@ public class DebugRover : MonoBehaviour
 		controls.Gameplay.Enable();
 		
 		PathMaker.Instance.rover = this;
+		PathMaker.Instance.currentRobot = gameObject;
 		
 		if(mqNode != null) {
 			mqNode.PublishInfo(forwardInput, turnInput, lightOn);

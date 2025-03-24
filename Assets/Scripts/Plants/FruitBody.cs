@@ -7,6 +7,9 @@ public class FruitBody : MonoBehaviour
 	
 	public float weight = 0.1f; //The weight of the fruit/vegetable in kilograms
 	public Rigidbody rb;
+	
+	public bool readyToDrop;
+	
     // Start is called before the first frame update
     void Start()
     {
@@ -33,6 +36,9 @@ public class FruitBody : MonoBehaviour
 		if(collider.gameObject.tag == "basketZone" && !rb.isKinematic) {
 			collider.gameObject.transform.parent.gameObject.GetComponent<Basket>().AddFruit(this);
 			Destroy(gameObject);
+		}
+		if(collider.gameObject.tag == "dropZone") {
+			readyToDrop = true;
 		}
     }
 }

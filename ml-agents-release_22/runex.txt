@@ -1,0 +1,1 @@
+mlagents-learn humanoidconfig.yaml --initialize-from=walk17 --run-id=walk18

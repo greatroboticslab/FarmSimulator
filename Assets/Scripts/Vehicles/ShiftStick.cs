@@ -21,7 +21,7 @@ public class ShiftStick : MonoBehaviour
     }
 	private void OnTriggerEnter(Collider other)
     {
-		Debug.Log("GEAR SHIFT!");
+		//Debug.Log("GEAR SHIFT!");
         if (other.gameObject.layer == 7) {
 			currentGear = other.gameObject.GetComponent<GearZone>().gear;
 		}

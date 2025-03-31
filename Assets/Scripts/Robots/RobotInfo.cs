@@ -14,12 +14,14 @@ public class RobotInfo : MonoBehaviour
 	public bool chaseCam;
 	public bool terrain;
 	public bool humanoid;
+	public bool training;
 	public bool includeTractor;
+	public float initialSize = 1f;
 
     // Start is called before the first frame update
     void Start()
     {
-        sizeGoal = new Vector3(1f,1f,1f);
+        sizeGoal = new Vector3(initialSize,initialSize,initialSize);
 		if(!humanoid) {
 			floatingText.GetComponent<TMP_Text>().text = robot.GetComponent<DebugRover>().robotName;
 		}
@@ -29,14 +31,14 @@ public class RobotInfo : MonoBehaviour
     void Update()
     {
         if(hovering) {
-        	sizeGoal = new Vector3(1.1f,1.1f,1.1f);
+        	sizeGoal = new Vector3(initialSize*1.1f,initialSize*1.1f,initialSize*1.1f);
         }
         else {
-        	sizeGoal = new Vector3(1f,1f,1f);
+        	sizeGoal = new Vector3(initialSize,initialSize,initialSize);
         }
 		
-		floatingText.transform.LookAt(-PathMaker.Instance.mainCam.transform.position);
-        
+		floatingText.transform.LookAt(PathMaker.Instance.mainCam.transform.position);
+        floatingText.transform.Rotate(0, 180, 0);
         
         transform.localScale = Vector3.Lerp(transform.localScale,
         	sizeGoal, 3.5f * Time.deltaTime);

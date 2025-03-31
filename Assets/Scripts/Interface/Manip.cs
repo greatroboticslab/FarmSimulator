@@ -14,6 +14,8 @@ public class Manip : MonoBehaviour
 	public GameObject curRobot;
 	public GameObject selectedTerrain;
 	public GameObject terrain;
+	public GameObject blankTerrainPrefab;
+	public bool blankTerrain;
 	public Camera botCam;
 	public bool freeCam;
 	public PosDisplay pd;
@@ -95,6 +97,7 @@ public class Manip : MonoBehaviour
 	}
     
     public void StartRobot(RobotInfo robotInfo) {
+		
 		cam.mode = 1;
 		Cursor.lockState = CursorLockMode.None;
     	cam.chaseCam = robotInfo.chaseCam;
@@ -102,7 +105,15 @@ public class Manip : MonoBehaviour
 		if(PathMaker.Instance.humanoid) {
 			curRobot.GetComponent<HumanoidRobot>().actor = PathMaker.Instance.actor;
 			PathMaker.Instance.humanoidRobot = curRobot.GetComponent<HumanoidRobot>();
+			if(PathMaker.Instance.training) {
+				PathMaker.Instance.director.gameObject.SetActive(true);
+				PathMaker.Instance.director.actor.SetActive(true);
+				PathMaker.Instance.humanoidRobot.training = true;
+			}
 		}
+		
+		PathMaker.Instance.selectMenuObj.SetActive(false);
+		
 		PathMaker.Instance.currentRobot = curRobot;
     	curRobot.transform.position = Vector3.zero;
     	cam.camPos = new Vector3(0.4f,1,-0.4f);
@@ -110,19 +121,17 @@ public class Manip : MonoBehaviour
     	cam.focusedRobot = curRobot;
     	if(robotInfo.terrain) {
     		terrain = Instantiate(selectedTerrain);
-			/*
-			if(!PathMaker.Instance.humanoid) {
-				curRobot.GetComponent<DebugRover>().mapInfo = terrain.GetComponent<MapInfo>();
-				curRobot.transform.position = curRobot.GetComponent<DebugRover>().mapInfo.spawn.position;
-				cam.camPos = curRobot.GetComponent<DebugRover>().mapInfo.spawn.position;
-			}
-			*/
+			
 			if(!PathMaker.Instance.humanoid) {
 				curRobot.GetComponent<DebugRover>().mapInfo = terrain.GetComponent<MapInfo>();
 			}
 			curRobot.transform.position = terrain.GetComponent<MapInfo>().spawn.position;
 			cam.camPos = terrain.GetComponent<MapInfo>().spawn.position;
     	}
+		else {
+			terrain = Instantiate(blankTerrainPrefab);
+			curRobot.transform.position = new Vector3(0, 1.4f, 0);
+		}
 		if(!PathMaker.Instance.humanoid) {
 			botCam = curRobot.GetComponent<DebugRover>().camera;
 			pd.rover = curRobot.GetComponent<DebugRover>();
@@ -153,8 +162,10 @@ public class Manip : MonoBehaviour
 				if(quickStart) {
 					started = true;
 					StartRobot(PathMaker.Instance.selectedRobot.GetComponent<RobotInfo>());
-					PathMaker.Instance.map = terrain.GetComponent<OnlineMaps>();
-					PathMaker.Instance.map.SetPosition(PathMaker.Instance.mapCoords.x,PathMaker.Instance.mapCoords.y);
+					if(PathMaker.Instance.useTerrain) {
+						PathMaker.Instance.map = terrain.GetComponent<OnlineMaps>();
+						PathMaker.Instance.map.SetPosition(PathMaker.Instance.mapCoords.x,PathMaker.Instance.mapCoords.y);
+					}
 				}
 			}
 		}

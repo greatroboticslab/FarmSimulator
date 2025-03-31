@@ -5,11 +5,12 @@ using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Sensors;
 
-public class HumanoidRobot : Agent
+public class HumanoidRobot : MonoBehaviour
 
 {
 	
 	public Actor actor;
+	public MLHumanoidController ml;
 	public bool copy; //Copy an actor (kinematic)
 	public bool mimic; //Mimic an actor by trying to apply torque to joints to match the pose
 	public bool training;
@@ -20,6 +21,9 @@ public class HumanoidRobot : Agent
 	public Tractor tractor;
 	public bool ridingTractor;
 	public bool selfDriving;
+	private bool boardingTractor;
+	private bool leavingTractor;
+	private float boardTime;
 	public bool harvesting;
 	public Plant currentCrop;
 	public int currentFruit;
@@ -39,11 +43,12 @@ public class HumanoidRobot : Agent
 	private float graspSpeed = 0.7f;
 	private bool reachedFruit;
 	private bool readyToHarvest;
+	public float maxTimePerFruit = 15f;
+	private float timeOnFruit;
 	
 	public FollowerRover basketRover;
 	
 	public float curTime = 0f;
-	public float timeout = 5f;
 	public float weightRange = 1.0f;
 	public float biasRange = 1.0f;
 	public float torqueMult = 3000f;
@@ -51,15 +56,13 @@ public class HumanoidRobot : Agent
 	public float vradRatio = 0.5f;
 	public float vradMultiplier = 0.5f;
 	public Director director;
-	public float fitness = 0;
 	public Camera mainCamera;
 	public PathMaker.Waypoint currentWaypoint;
 	public bool gotWaypoint;
 	public bool wantsToTeleport;
 	public float heading;
 	
-	public Vector3 startPos;
-	public Quaternion startRot;
+	
 	public ReferenceSkeleton refSkeleton;
 	private float[] torques;
 	
@@ -653,60 +656,9 @@ public class HumanoidRobot : Agent
 	}
 	
 	
-	public void ResetSelf() {
-		fitness = 0;
-		
-		//Primer
-		foreach(HumanoidJoint j in joints) {
-			j.rb.velocity = Vector3.zero;
-			j.rb.angularVelocity = Vector3.zero;
-			//j.rb.enabled = false;
-		}
-		
-		transform.position = startPos;
-		transform.rotation = startRot;
-		
-		//End
-		foreach(HumanoidJoint j in joints) {
-			j.rb.velocity = Vector3.zero;
-			j.rb.angularVelocity = Vector3.zero;
-			j.gameObject.transform.localPosition = j.startPos;
-			j.gameObject.transform.localRotation = j.startRot;
-			//j.rb.enabled = true;
-		}
-	}
 	
-	//MLAGENTS STUFF
 	
-	public override void OnEpisodeBegin() {
-		
-		curTime = 0f;
-		ResetSelf();
-		
-	}
 	
-	public override void CollectObservations(VectorSensor sensor) {
-		
-		foreach(float f in GetInputs()) {
-			sensor.AddObservation(f);
-		}
-		
-	}
-	
-	public override void OnActionReceived(ActionBuffers actions) {
-		//Debug.Log(actions.ContinuousActions[0]);
-		for(int i = 0; i < joints.Length*3; i+=3) {
-			float _torque = torqueMult*joints[i/3].strength;
-			if(joints[i/3].parent != null) {
-			//if(i > 0) {
-			
-				joints[i/3].parent.rb.AddRelativeTorque(new Vector3(actions.ContinuousActions[i]*_torque, actions.ContinuousActions[i+1]*_torque,actions.ContinuousActions[i+2]*_torque)*-1);
-				joints[i/3].rb.AddRelativeTorque(new Vector3(actions.ContinuousActions[i]*_torque, actions.ContinuousActions[i+1]*_torque,actions.ContinuousActions[i+2]*_torque));
-			
-			}
-			//joints[i/3].rb.AddTorque(torqueMult, torqueMult,torqueMult);
-		}
-	}
 	
 	public float PoseDelta(int j) {
 		
@@ -982,11 +934,24 @@ public class HumanoidRobot : Agent
 						harvesting = false;
 						transform.rotation = Quaternion.identity;
 					}
+					timeOnFruit = 0;
 					
 					
 				}
 				
 			}
+			//Ran out of time on this fruit
+			if(timeOnFruit > maxTimePerFruit) {
+				
+				currentFruit += 1;
+				if(currentFruit >= currentCrop.fruits.Count) {
+					harvesting = false;
+					transform.rotation = Quaternion.identity;
+				}
+				timeOnFruit = 0;
+				
+			}
+			timeOnFruit += Time.deltaTime;
 		}
 		
 	}
@@ -1043,10 +1008,150 @@ public class HumanoidRobot : Agent
 		return output;
 	}
 	
+	public void TractorMoveTo(Vector2 pos) {
+		
+		Vector2 rPos = new Vector2(transform.position.x, transform.position.z);
+					
+		float targetHeading = Mathf.Atan2(pos.x - rPos.x,
+		pos.y - rPos.y
+		) * Mathf.Rad2Deg;
+		
+		if(targetHeading < 0) {
+			targetHeading += 360;
+		}
+		
+		//Debug.Log(targetHeading);
+		
+		float deltaHeading = heading - targetHeading;
+		if(deltaHeading > 180) {
+			targetHeading += 360;
+		}
+		if(deltaHeading < -180) {
+			heading += 360;
+		}
+		
+		deltaHeading = heading - targetHeading;
+		
+		
+		if(Mathf.Abs(deltaHeading) > 0.4f) {
+			
+			if(heading < targetHeading) {
+				//leftRight = Mathf.Sqrt(Mathf.Abs(deltaHeading)+1)/13f;
+				leftRight = Mathf.Lerp(leftRight, Mathf.Sqrt(Mathf.Abs(deltaHeading)+1)/13f, 0.25f);
+				forward = 1f;
+			}
+			if(heading > targetHeading) {
+				//leftRight = -Mathf.Sqrt(Mathf.Abs(deltaHeading)+1)/13f;
+				leftRight = Mathf.Lerp(leftRight, -Mathf.Sqrt(Mathf.Abs(deltaHeading)+1)/13f, 0.25f);
+				forward = 1f;
+			}
+			
+			actor.anim.SetFloat("turning",leftRight);
+			
+		}
+		else {
+			leftRight = Mathf.Lerp(leftRight, 0, 0.05f);
+		}
+		
+		float wDist = Vector3.Distance(rPos, pos);
+		
+		//Change gear based on distance from target
+		
+		if(wDist > 0.1f) {
+			forward = 1f;
+			desiredGear = 1;
+		}
+		
+		if(wDist > 10) {
+			desiredGear = 2;
+		}
+		
+		if(wDist > 50) {
+			desiredGear = 3;
+		}
+		
+		//Change gear based on speed
+		
+		var localVelocity = tractor.transform.InverseTransformDirection(tractor.rb.velocity);
+		float forwardSpeed = localVelocity.z;
+		
+		if(forwardSpeed < tractor.gears[1].maxSpeed && desiredGear > 1) {
+			desiredGear = 1;
+		}
+		
+	}
+	
+	public void MoveTo(Vector3 position) {
+		
+		Vector2 p = new Vector2(position.x, position.z);
+		
+		Vector2 rPos = new Vector2(transform.position.x, transform.position.z);
+					
+		float targetHeading = Mathf.Atan2(p.x - rPos.x,
+		p.y - rPos.y
+		) * Mathf.Rad2Deg;
+		
+		if(targetHeading < 0) {
+			targetHeading += 360;
+		}
+		
+		//Debug.Log(targetHeading);
+		
+		float deltaHeading = heading - targetHeading;
+		if(deltaHeading > 180) {
+			targetHeading += 360;
+		}
+		if(deltaHeading < -180) {
+			heading += 360;
+		}
+		
+		deltaHeading = heading - targetHeading;
+		
+		
+		if(Mathf.Abs(deltaHeading) > 0.4f) {
+			
+			if(heading < targetHeading) {
+				leftRight = Mathf.Sqrt(Mathf.Abs(deltaHeading)+1)/13f;
+			}
+			if(heading > targetHeading) {
+				leftRight = -Mathf.Sqrt(Mathf.Abs(deltaHeading)+1)/13f;
+				
+			}
+			
+			
+			
+		}
+		if(Vector3.Distance(rPos, p) > 0.1f) {
+			forward = 1f/Mathf.Sqrt(Mathf.Abs(deltaHeading)+1);
+		}
+		
+	}
+	
+	public void TractorUpdate() {
+		
+		//tractor.currentGear = 1;
+		TractorMoveTo(new Vector2(0,0));
+		
+		tractor.steeringRotation = leftRight*300f;
+		tractor.brakes = 1f - forward;
+		tractor.currentGear = desiredGear;
+		
+		
+	}
+	
+	public void DismountTractor() {
+		
+		leavingTractor = true;
+		boardTime = 0;
+		actor.anim.SetBool("tractor",false);
+		
+		
+	}
+	
 	//Humanoid equivalent to self drive update
 	public void MoveUpdate() {
 		
-		leftRight = 0;
+		
 		forward = 0;
 		
 		if(harvesting) {
@@ -1057,98 +1162,184 @@ public class HumanoidRobot : Agent
 			
 			actor.anim.SetBool("harvesting",false);
 			
-			if(currentWaypoint != null) {
+			//Tractor
+			
+			if(tractor) {
 				
-				Vector2 rPos = new Vector2(transform.position.x, transform.position.z);
-				
-				float targetHeading = Mathf.Atan2(currentWaypoint.pos.x - rPos.x,
-				currentWaypoint.pos.y - rPos.y
-				) * Mathf.Rad2Deg;
-				
-				if(targetHeading < 0) {
-					targetHeading += 360;
-				}
-				
-				//Debug.Log(targetHeading);
-				
-				float deltaHeading = heading - targetHeading;
-				if(deltaHeading > 180) {
-					targetHeading += 360;
-				}
-				if(deltaHeading < -180) {
-					heading += 360;
-				}
-				
-				deltaHeading = heading - targetHeading;
-				
-				
-				bool reached = false;
-				if(currentWaypoint.checkWater) {
-					if(currentWaypoint.aimOnly) {
-						if(Mathf.Abs(deltaHeading) <= 1.2f) {
-							reached = true;
+				if(!ridingTractor && !boardingTractor && !leavingTractor) {
+					
+					Transform nearestBoardZone = tractor.boardZones[0];
+					float minDist = Vector3.Distance(nearestBoardZone.position, transform.position);
+					for(int i = 1; i < tractor.boardZones.Count; i++) {
+						
+						float d = Vector3.Distance(tractor.boardZones[i].position, transform.position);
+						if(d < minDist) {
+							minDist = d;
+							nearestBoardZone = tractor.boardZones[i];
 						}
+						
+					}
+					
+					bool reached = false;
+					
+					if(Vector3.Distance(transform.position, nearestBoardZone.position) < 1.65f) {
+					
+						reached = true;
+					
+					}
+					if(reached) {
+						Debug.Log("BOARDING");
+						boardingTractor = true;
+						actor.anim.SetBool("tractor",true);
+						
 					}
 					else {
-						if(Vector3.Distance(rPos, currentWaypoint.pos) < 2.5f) {
+						MoveTo(nearestBoardZone.position);
+					}
+					
+				}
+				
+				if(leavingTractor) {
+					
+					boardTime += Time.deltaTime;
+					transform.position = Vector3.Lerp(transform.position,tractor.boardZones[0].position + new Vector3(0,1.2f,0),0.09f);
+					transform.rotation = Quaternion.Lerp(transform.rotation,tractor.boardZones[0].rotation,0.09f);
+				
+					if(boardTime > 3.0f) {
+						ridingTractor = false;
+						boardTime = 0;
+						leavingTractor = false;
+						transform.position = tractor.boardZones[0].position;
+					}
+					
+				}
+				
+				if(ridingTractor && !leavingTractor) {
+					
+					transform.position = tractor.seat.position;
+					transform.rotation = tractor.seat.rotation;
+					
+					TractorUpdate();
+					
+				}
+				
+				if(boardingTractor) {
+					boardTime += Time.deltaTime;
+					transform.position = Vector3.Lerp(transform.position,tractor.seat.position,0.09f);
+					transform.rotation = Quaternion.Lerp(transform.rotation,tractor.seat.rotation,0.09f);
+				
+					if(boardTime > 3.0f) {
+						ridingTractor = true;
+						boardTime = 0;
+						boardingTractor = false;
+						//DismountTractor();
+					}
+				}
+				
+			}
+			
+			//Basket rover
+			
+			else {
+				
+				leftRight = 0;
+				
+				if(currentWaypoint != null) {
+					
+					Vector2 rPos = new Vector2(transform.position.x, transform.position.z);
+					
+					float targetHeading = Mathf.Atan2(currentWaypoint.pos.x - rPos.x,
+					currentWaypoint.pos.y - rPos.y
+					) * Mathf.Rad2Deg;
+					
+					if(targetHeading < 0) {
+						targetHeading += 360;
+					}
+					
+					//Debug.Log(targetHeading);
+					
+					float deltaHeading = heading - targetHeading;
+					if(deltaHeading > 180) {
+						targetHeading += 360;
+					}
+					if(deltaHeading < -180) {
+						heading += 360;
+					}
+					
+					deltaHeading = heading - targetHeading;
+					
+					
+					bool reached = false;
+					if(currentWaypoint.checkWater) {
+						if(currentWaypoint.aimOnly) {
+							if(Mathf.Abs(deltaHeading) <= 1.2f) {
+								reached = true;
+							}
+						}
+						else {
+							if(Vector3.Distance(rPos, currentWaypoint.pos) < 1.5f) {
+								if(Mathf.Abs(deltaHeading) <= 1.2f) {
+									reached = true;
+								}
+							}
+						}
+					}
+					else if(currentWaypoint.pickFruit) {
+						if(Vector3.Distance(rPos, currentWaypoint.pos) < 1.5f) {
 							if(Mathf.Abs(deltaHeading) <= 1.2f) {
 								reached = true;
 							}
 						}
 					}
-				}
-				else if(currentWaypoint.pickFruit) {
-					if(Vector3.Distance(rPos, currentWaypoint.pos) < 2.5f) {
-						if(Mathf.Abs(deltaHeading) <= 1.2f) {
+					else {
+						if(Vector3.Distance(rPos, currentWaypoint.pos) < 0.35f) {
 							reached = true;
 						}
 					}
-				}
-				else {
-					if(Vector3.Distance(rPos, currentWaypoint.pos) < 0.4f) {
-						reached = true;
-					}
-				}
-				
-				
-				//Reached Waypoint
-				if(reached) {
 					
-					if(currentWaypoint.checkWater) {
-						//TestPlant();
-					}
-					if(currentWaypoint.pickFruit) {
-						readyToHarvest = false;
-						HarvestCrop(currentWaypoint.plant.GetComponent<Plant>());
-					}
-					currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
-				}
-				
-				
-				
-				
-				if(Mathf.Abs(deltaHeading) > 0.4f) {
 					
-					if(heading < targetHeading) {
-						leftRight = Mathf.Sqrt(Mathf.Abs(deltaHeading)+1)/13f;
+					//Reached Waypoint
+					if(reached) {
+						
+						if(currentWaypoint.checkWater) {
+							//TestPlant();
+							currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
+						}
+						else if(currentWaypoint.pickFruit) {
+							if(Vector3.Distance(transform.position, basketRover.transform.position) <= 3.2f) {
+								
+								HarvestCrop(currentWaypoint.plant.GetComponent<Plant>());
+								currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
+								
+							}
+						}
+						else {
+							currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
+						}
+						
 					}
-					if(heading > targetHeading) {
-						leftRight = -Mathf.Sqrt(Mathf.Abs(deltaHeading)+1)/13f;
+					else {
+						MoveTo(new Vector3(currentWaypoint.pos.x, 0, currentWaypoint.pos.y));
 					}
 					
 					
 					
+					
 				}
-				if(currentWaypoint.pickFruit) {
-					if(Vector3.Distance(rPos, currentWaypoint.pos) > 2.0f) {
-						forward = 1f/Mathf.Sqrt(Mathf.Abs(deltaHeading)+1);
-					}
-				}
-				else {
-					if(Vector3.Distance(rPos, currentWaypoint.pos) > 0.3f) {
-						forward = 1f/Mathf.Sqrt(Mathf.Abs(deltaHeading)+1);
-					}
-				}
+			}
+		}
+		
+	}
+	
+	public void EnablePhysics() {
+		
+		GetComponent<Rigidbody>().isKinematic = false;
+		List<GameObject> c = new List<GameObject>();
+		c = GetChildren(gameObject);
+		foreach(GameObject o in c) {
+			Rigidbody r = o.GetComponent<Rigidbody>();
+			if(r) {
+				r.isKinematic = false;
 			}
 		}
 		
@@ -1158,13 +1349,17 @@ public class HumanoidRobot : Agent
     void Start()
     {
 		if(training) {
-			director = transform.parent.gameObject.GetComponent<Director>();
+			//director = transform.parent.gameObject.GetComponent<Director>();
+			director = PathMaker.Instance.director;
+			transform.SetParent(director.transform);
+			ml.gameObject.SetActive(true);
+			ml.director = director;
+			EnablePhysics();
 		}
-		startPos = transform.position;
-		startRot = transform.rotation;
+		
         GetAllJoints();
-		Debug.Log("Inputs count: " + GetInputs().Length);
-		Debug.Log("Outputs count: " + joints.Length*3);
+		//Debug.Log("Inputs count: " + GetInputs().Length);
+		//Debug.Log("Outputs count: " + joints.Length*3);
 		GenerateNeuralNetwork(true);
 		
 		if(copy) {
@@ -1190,6 +1385,11 @@ public class HumanoidRobot : Agent
 				//Debug.Log("TELEPORTING...");
 				Vector2 tPos = PathMaker.Instance.waypoints[0].pos;
 				transform.position = new Vector3(tPos.x + 5.0f, transform.position.y + 10.0f, tPos.y);
+				
+				PathMaker.Instance.basketRover.rb.isKinematic = true;
+				PathMaker.Instance.basketRover.transform.position = transform.position + new Vector3(3, -7, 3);
+				PathMaker.Instance.basketRover.rb.isKinematic = false;
+				
 			}
 		}
 		
@@ -1200,21 +1400,6 @@ public class HumanoidRobot : Agent
 			}
 		}
 		
-		if(training) {
-		
-			if(Mathf.Abs(transform.position.x) > 3000) {
-				SetReward(-9999f);
-				EndEpisode();
-			}
-			if(Mathf.Abs(transform.position.y) > 3000) {
-				SetReward(-9999f);
-				EndEpisode();
-			}
-			if(Mathf.Abs(transform.position.z) > 3000) {
-				SetReward(-9999f);
-				EndEpisode();
-			}
-		}
 		
 		//float[] inputs = GetInputs();
 		//torques = nn.ForwardPass(inputs);
@@ -1235,7 +1420,7 @@ public class HumanoidRobot : Agent
 		
 		
 		//Play actor animations
-		if(copy) {
+		if(copy && !training) {
 			
 			if(!selfDriving) {
 				forward = Input.GetAxis("Vertical");
@@ -1252,7 +1437,7 @@ public class HumanoidRobot : Agent
 			
 			transform.position += transform.forward*forward*Time.deltaTime*walkSpeed;
 			
-			if(forward != 0) {
+			if(forward != 0 && !ridingTractor) {
 				
 				LayerMask layerMask = ~LayerMask.GetMask("humanoid");
 				RaycastHit ghit;
@@ -1295,16 +1480,6 @@ public class HumanoidRobot : Agent
 			
 		}
 		
-		if(training) {
-		
-			fitness += director.FrameFitness(this, "walk");
-			
-			if(curTime > timeout) {
-				SetReward(director.GetFitness(this, "walk") + fitness);
-				EndEpisode();
-			}
-		
-		}
 		
 		
 	}

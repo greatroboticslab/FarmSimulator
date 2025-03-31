@@ -19,6 +19,10 @@ public class PathMaker : MonoBehaviour
 	public Actor actor;
 	public DebugRover rover;
 	public RoverControls roverControls;
+	public bool training;
+	public bool useTerrain;
+	public Director director;
+	public GameObject selectMenuObj;
 	
 	public string currentLocationName;
 	
@@ -50,6 +54,7 @@ public class PathMaker : MonoBehaviour
 	public GameObject placeCamOrg;
 	public GameObject coordMenu;
 	public PosDisplay posDisplay;
+	public SelectMenu selectMenu;
 	
 	public Manip manip;
 	public GameObject plotControls;
@@ -82,7 +87,7 @@ public class PathMaker : MonoBehaviour
 		
 		Instance = this;
         waypoints = new List<Waypoint>();
-		Instance.selectedRobot = GetComponent<SelectMenu>().robotPrefabs[0].GetComponent<RobotInfo>();
+		Instance.selectedRobot = GetComponent<SelectMenu>().robotGroups[0].robotPrefabs[0].GetComponent<RobotInfo>();
     }
 	
 	public Waypoint GetNextWaypoint(Vector3 pos) {
@@ -119,7 +124,6 @@ public class PathMaker : MonoBehaviour
 
 		for (int i = 0; i < maxSteps; i++)
 		{
-			Debug.Log(rayPos);
 			// Check if the raycast hits the terrain
 			if (Physics.Raycast(rayPos, Vector3.down, out hit, stepHeight))
 			{
@@ -131,6 +135,7 @@ public class PathMaker : MonoBehaviour
 					if(tractor == null) {
 						GameObject newTractor = Instantiate(tractorPrefab);
 						tractor = newTractor.GetComponent<Tractor>();
+						hr.tractor = tractor;
 					}
 					tractor.transform.position = new Vector3(rayPos.x + 3, hit.point.y + 2.4f, rayPos.z + 3);
 				}

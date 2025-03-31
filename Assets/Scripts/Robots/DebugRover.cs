@@ -561,6 +561,7 @@ public class DebugRover : MonoBehaviour
 				transform.position = new Vector3(tPos.x + 5.0f, transform.position.y + 10.0f, tPos.y);
 				rb.isKinematic = false;
 				rb.MovePosition(new Vector3(tPos.x + 5.0f, transform.position.y + 10.0f, tPos.y));
+				
 			}
 		}
 		

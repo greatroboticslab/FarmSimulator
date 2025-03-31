@@ -25,6 +25,23 @@ public class FollowerRover : MonoBehaviour
 	public float heading; // compass reading
 	
 	public Rigidbody rb;
+	public Transform flipPoint;
+	
+	public void Flip() {
+		
+		transform.rotation = Quaternion.identity;
+		
+	}
+	
+	public void FlipCheck() {
+		
+		if(flipPoint.position.y < transform.position.y) {
+			
+			Flip();
+			
+		}
+		
+	}
 	
 	public void DriveUpdate() {
 		
@@ -59,22 +76,24 @@ public class FollowerRover : MonoBehaviour
 			
 			if(!parked) {
 				
-				float turnMult = (Mathf.Abs(deltaHeading) / 180f);
+				//float turnMult = (Mathf.Abs(deltaHeading) / 180f)*0.2f;
+				float turnMult = 0.0f;
 				
 				if(heading < targetHeading) {
-					turnInput = 0.1f + turnMult;
+					turnInput = 0.8f + turnMult;
 				}
 				if(heading > targetHeading) {
-					turnInput = -0.1f - turnMult;
+					turnInput = -0.8f - turnMult;
 				}
 				
 				
-				if(forwardSpeed > 0) {
+				if(forwardSpeed > 2) {
 					forwardInput = -1;
 				}
-				if(forwardSpeed < 0) {
+				if(forwardSpeed < -2) {
 					forwardInput = 1;
 				}
+				
 			}
 			
 		}
@@ -95,9 +114,11 @@ public class FollowerRover : MonoBehaviour
 			if(Vector3.Distance(transform.position, leader.transform.position) >= repositionDistance) {
 				parked = false;
 			}
+			rb.isKinematic = true;
 		}
 		else {
 			leftDrive.brakeTorque = rightDrive.brakeTorque = 0;
+			rb.isKinematic = false;
 		}
 		
 	}
@@ -111,6 +132,9 @@ public class FollowerRover : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+		
+		FlipCheck();
+		
 		heading = transform.eulerAngles.y;
 		
 		DriveUpdate();

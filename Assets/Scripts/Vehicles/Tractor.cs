@@ -8,21 +8,30 @@ public class Tractor : MonoBehaviour
 	public bool manualControl;
 	public float manualBrakeAmount = 0f;
 	
+	public bool dynamic; //Do the rigidbody controls control the tractor, or not. Set to false to control the tractor programatically.
+	
 	public Transform steeringWheel;
 	public Transform key;
 	public float lastSteeringRot;
 	private float steeringDelta = 0;
-	private float steeringRotation = 0;
+	public float steeringRotation = 0;
 	public float steeringMultiplier = 0.1f;
 	public float brakePower = 1000f;
 	public List<Gear> gears;
 	public float brakes = 0.0f;
+	public float metaBrakes; //Slows down tractor regardless of controls
 	public float clutchAmount = 0.0f;
 	public int currentGear = 1;
 	public ShiftStick stick;
 	public float ignitionProgress = 0; //Engine starts once reaches 1.0
 	public float rpm = 0;
 	public float keyAngle = 0;
+	public List<Transform> boardZones;
+	public Transform seat;
+	public Rigidbody rb;
+	public float maxSpeed;
+	
+	public Transform flipPoint;
 	
 	public GameObject clutch;
 	public GameObject brake;
@@ -40,15 +49,42 @@ public class Tractor : MonoBehaviour
 		
 	}
 	
+	public void Flip() {
+		
+		transform.rotation = Quaternion.identity;
+		
+	}
+	
+	public void FlipCheck() {
+		
+		if(flipPoint.position.y < transform.position.y) {
+			
+			Flip();
+			
+		}
+		
+	}
+	
     // Start is called before the first frame update
     void Start()
     {
+		rb = GetComponent<Rigidbody>();
         lastSteeringRot = steeringWheel.localRotation.eulerAngles.y;
+		currentGear = 0;
     }
 
     // Update is called once per frame
     void Update()
     {
+		
+		metaBrakes = 0f;
+		var localVelocity = transform.InverseTransformDirection(rb.velocity);
+		float forwardSpeed = localVelocity.z;
+		if(forwardSpeed > maxSpeed) {
+			metaBrakes = (forwardSpeed - maxSpeed)/3f;
+		}
+		
+		FlipCheck();
 		
 		if(manualControl) {
 			
@@ -78,60 +114,73 @@ public class Tractor : MonoBehaviour
 			
 		}
 		
-		float sd1 = 0;
-		float sd2 = 0;
-		float sd3 = 0;
-		float csteering = steeringWheel.localRotation.eulerAngles.y;
-		sd1 = csteering - (lastSteeringRot);
-		sd2 = csteering - (lastSteeringRot - 360);
-		sd3 = csteering - (lastSteeringRot + 360);
-		steeringDelta = sd1;
-		if(Mathf.Abs(sd2) < Mathf.Abs(sd1) && Mathf.Abs(sd2) < Mathf.Abs(sd3)) {
-			steeringDelta = sd2;
+		float wheelTorque = 0;
+		
+		if(dynamic) {
+		
+			float sd1 = 0;
+			float sd2 = 0;
+			float sd3 = 0;
+			float csteering = steeringWheel.localRotation.eulerAngles.y;
+			sd1 = csteering - (lastSteeringRot);
+			sd2 = csteering - (lastSteeringRot - 360);
+			sd3 = csteering - (lastSteeringRot + 360);
+			steeringDelta = sd1;
+			if(Mathf.Abs(sd2) < Mathf.Abs(sd1) && Mathf.Abs(sd2) < Mathf.Abs(sd3)) {
+				steeringDelta = sd2;
+			}
+			if(Mathf.Abs(sd3) < Mathf.Abs(sd1) && Mathf.Abs(sd3) < Mathf.Abs(sd2)) {
+				steeringDelta = sd3;
+			}
+			steeringRotation += steeringDelta;
+			
+			//Debug.Log(steeringRotation);
+			
+			//Brakes
+			float b = brake.transform.localRotation.eulerAngles.z;
+			
+			if(b < 180) {
+				b *= -1f;
+			}
+			else {
+				b = 350f - b;
+			}
+			
+			brakes = b/10f;
+			
+			if(brakes < 0) {
+				brakes = 0f;
+			}
+			
+			//Clutch
+			float cl = brake.transform.localRotation.eulerAngles.z;
+			
+			if(cl < 180) {
+				cl *= -1f;
+			}
+			else {
+				cl = 350f - cl;
+			}
+			
+			clutchAmount = cl/10f;
+			
+			if(clutchAmount < 0) {
+				clutchAmount = 0f;
+			}
+			
+			if(clutchAmount > 0.5f) {
+				currentGear = stick.currentGear;
+			}
+			
+			
+			//Do nothing for park since it is initialized to zero
+			
 		}
-		if(Mathf.Abs(sd3) < Mathf.Abs(sd1) && Mathf.Abs(sd3) < Mathf.Abs(sd2)) {
-			steeringDelta = sd3;
-		}
-		steeringRotation += steeringDelta;
 		
-        //Debug.Log(steeringRotation);
-		
-		//Brakes
-		float b = brake.transform.localRotation.eulerAngles.z;
-		
-		if(b < 180) {
-			b *= -1f;
-		}
-		else {
-			b = 350f - b;
-		}
-		
-		brakes = b/10f;
-		
-		if(brakes < 0) {
-			brakes = 0f;
-		}
-		
-		//Clutch
-		float cl = brake.transform.localRotation.eulerAngles.z;
-		
-		if(cl < 180) {
-			cl *= -1f;
-		}
-		else {
-			cl = 350f - cl;
-		}
-		
-		clutchAmount = cl/10f;
-		
-		if(clutchAmount < 0) {
-			clutchAmount = 0f;
-		}
-		
-		if(clutchAmount > 0.5f) {
-			currentGear = stick.currentGear;
-		}
 		float gearTorque = 0;
+		if(currentGear == 0) {
+			brakes = 1;
+		}
 		if(currentGear > 0) {
 			gearTorque = gears[currentGear].torque;
 		}
@@ -140,7 +189,7 @@ public class Tractor : MonoBehaviour
 		}
 		
 		//Lower torque applied to wheel based on wheel speed
-		float wheelTorque = gearTorque;
+		wheelTorque = gearTorque;
 		float avgWheelSpeed = (rearRightWheel.WheelCollider.rotationSpeed + rearLeftWheel.WheelCollider.rotationSpeed)/2f;
 		int c = currentGear;
 		if(currentGear < 0) {
@@ -154,11 +203,6 @@ public class Tractor : MonoBehaviour
 			wheelTorque = 0;
 		}
 		
-		//Debug.Log(rearRightWheel.WheelCollider.rotationSpeed);
-		//Debug.Log(wheelTorque);
-		
-		//Do nothing for park since it is initialized to zero
-		
 		frontRightWheel.WheelCollider.steerAngle = steeringRotation*steeringMultiplier;
 		frontLeftWheel.WheelCollider.steerAngle = steeringRotation*steeringMultiplier;
 		
@@ -168,8 +212,11 @@ public class Tractor : MonoBehaviour
 		rearLeftWheel.WheelCollider.motorTorque = wheelTorque * (1f - brakes);
 		//Debug.Log(brakes);
 		
-		rearRightWheel.WheelCollider.brakeTorque = brakes*brakePower;
-		rearLeftWheel.WheelCollider.brakeTorque = brakes*brakePower;
+		rearRightWheel.WheelCollider.brakeTorque = (brakes*brakePower)+(metaBrakes*brakePower);
+		rearLeftWheel.WheelCollider.brakeTorque = (brakes*brakePower)+(metaBrakes*brakePower);
+		
+		frontRightWheel.WheelCollider.brakeTorque = (brakes*brakePower)+(metaBrakes*brakePower);
+		frontLeftWheel.WheelCollider.brakeTorque = (brakes*brakePower)+(metaBrakes*brakePower);
 		
 		//frontRightWheel.WheelCollider.steerAngle = Random.Range(0,90);
 		

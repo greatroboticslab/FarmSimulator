@@ -106,8 +106,7 @@ public class MainCam : MonoBehaviour
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit, 100))
             {
-                //Debug.Log(hit.transform.name);
-                //Debug.Log("hit");
+                
 				RobotInfo ri = hit.collider.gameObject.GetComponent<RobotInfo>();
 				if(ri != null) {
 					ri.hovering = true;
@@ -116,6 +115,8 @@ public class MainCam : MonoBehaviour
 						PathMaker.Instance.selectedRobot = ri;
 						PathMaker.Instance.humanoid = ri.humanoid;
 						PathMaker.Instance.useTractor = ri.includeTractor;
+						PathMaker.Instance.training = ri.training;
+						PathMaker.Instance.useTerrain = ri.terrain;
 						mode = 0;
 						transform.position = Vector3.zero;
 						PathMaker.Instance.coordMenu.SetActive(true);
@@ -128,8 +129,7 @@ public class MainCam : MonoBehaviour
 		if(!isVRCam) {
 			transform.position = Vector3.Lerp(transform.position, camPos, 0.6f*Time.deltaTime);
 		}
-    	//float forwardF = OVRInput.Get(OVRInput.Axis2D.SecondaryThumbstick).y * moveSpeed;
-		//float sideF = OVRInput.Get(OVRInput.Axis2D.SecondaryThumbstick).x * turnSpeed;
+		
 		Vector2 mv = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick);
 		
 		
@@ -142,23 +142,9 @@ public class MainCam : MonoBehaviour
 			
 			Vector3 sideMv = Quaternion.Euler(0, 90, 0) * cForward;
 			
-			//Debug.Log(cForward);
-			
-			//transform.position += mv.y*cForward * Time.deltaTime;
-			
 			cc.Move(mv.y*cForward * Time.deltaTime * walkSpeed);
 			cc.Move(mv.x*sideMv * Time.deltaTime * walkSpeed);
 			cc.Move(-transform.up * Time.deltaTime);
-			
-			/*
-			RaycastHit hit;
-			if (Physics.Raycast(transform.position + new Vector3(0,height,0), transform.TransformDirection(-Vector3.up), out hit, Mathf.Infinity))
-			{
-				transform.position = new Vector3(transform.position.x,
-				hit.point.y - height,
-				transform.position.z);
-			}
-			*/
 		}
     	
         if(mode == 0) {
@@ -172,16 +158,10 @@ public class MainCam : MonoBehaviour
 				targetPos = PathMaker.Instance.placeCamOrg.transform.position;
 				
 				transform.position = targetPos;
-				/*
-				if(!isVRCam) {
-					transform.position = Vector3.Lerp(transform.position, targetPos, 0.01f);
-				}
-				*/
 		}
         else {
         	if(chaseCam) {
         		if(focusedRobot != null) {
-        			//targetPos = focusedRobot.transform.position;
 					
 					
 					if(PathMaker.Instance.humanoid) {
@@ -193,24 +173,14 @@ public class MainCam : MonoBehaviour
         		}
 				
 				if(!isVRCam) {
-					//transform.position = Vector3.Lerp(transform.position, targetPos, 0.01f);
 					transform.position = targetPos;
 				}
-				//Vector3 _off = new Vector3(0,2,0);
-				
-				/*
-				Vector3 _off = Vector3.zero;
-				if(Vector3.Distance(targetPos + _off, transform.position) > maxChaseDist) {
-					transform.position = Vector3.Lerp(transform.position, targetPos + _off, 0.01f);
-				}
-				*/
         	}
-    		//Quaternion desiredRotation = Quaternion.LookRotation(targetPos - transform.position);
+			
 			if(focusedRobot != null) {
 				Quaternion desiredRotation = focusedRobot.transform.rotation;
 			}
 			
-    		//transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, 0.9f * Time.deltaTime);
         }
     }
 }

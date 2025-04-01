@@ -43,7 +43,7 @@ public class Manip : MonoBehaviour
 	
 	public bool quickStart;
 	public GameObject defaultRobot;
-	private bool started;
+	public bool started;
 	
 	public GameObject weedDensityDisplay;
 	public float weedDensity;
@@ -130,6 +130,7 @@ public class Manip : MonoBehaviour
     	}
 		else {
 			terrain = Instantiate(blankTerrainPrefab);
+			PathMaker.Instance.emptyTerrain = terrain;
 			curRobot.transform.position = new Vector3(0, 1.4f, 0);
 		}
 		if(!PathMaker.Instance.humanoid) {

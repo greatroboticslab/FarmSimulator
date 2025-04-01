@@ -25,7 +25,7 @@ public class Plow : MonoBehaviour
     {
         if(rb.velocity.magnitude >= 0.01f) {
 			velAdd += rb.velocity.magnitude;
-			if(velAdd > 1.0f) {
+			if(velAdd > 8.0f) {
 				velAdd = 0;
 				foreach(Transform c in contactPoints) {
 					
@@ -35,7 +35,7 @@ public class Plow : MonoBehaviour
 					// Does the ray intersect any objects excluding the player layer
 					if (Physics.Raycast(c.position, transform.TransformDirection(-Vector3.up), out hit, 2f, layerMask))
 
-					{ 
+					{
 						GameObject newDirt = Instantiate(dirtRowPrefab);
 						newDirt.transform.position = hit.point;
 						newDirt.transform.rotation = transform.rotation;

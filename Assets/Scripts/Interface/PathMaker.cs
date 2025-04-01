@@ -17,6 +17,7 @@ public class PathMaker : MonoBehaviour
 	
 	public static PathMaker Instance;
 	public Actor actor;
+	public Actor trainingActor;
 	public DebugRover rover;
 	public RoverControls roverControls;
 	public bool training;
@@ -49,6 +50,7 @@ public class PathMaker : MonoBehaviour
 	public bool placedDown;
 	
 	public OnlineMaps map;
+	public GameObject emptyTerrain; //Blank plane used for training
 	
 	public MainCam mainCam;
 	public GameObject placeCamOrg;
@@ -164,6 +166,55 @@ public class PathMaker : MonoBehaviour
 			// Decrease the raycast height for the next step
 			rayPos.y -= stepHeight;
 		}
+		
+	}
+	
+	public void GoToMainMenu() {
+		
+		if(rover) {
+			Destroy(rover.gameObject);
+		}
+		if(humanoidRobot) {
+			Destroy(humanoidRobot.gameObject);
+		}
+		if(basketRover) {
+			Destroy(basketRover.gameObject);
+		}
+		if(tractor) {
+			Destroy(tractor.gameObject);
+		}
+		
+		if(map) {
+			Destroy(map.gameObject);
+			
+		}
+		if(emptyTerrain) {
+			Destroy(emptyTerrain);
+		}
+		
+		manip.cam.mode = 3;
+		manip.cam.targetPos = Vector3.zero;
+		manip.cam.camPos = new Vector3(3,5,0);
+		manip.cam.chaseCam = false;
+		manip.cam.transform.position = new Vector3(3,5,0);
+		manip.cam.currentFocusPoint = new Vector3(0,0,0);
+		selectMenuObj.SetActive(true);
+		trainingActor.gameObject.SetActive(false);
+		manip.started = false;
+		mapReady = false;
+		placedDown = false;
+		hSpawnTime = 0;
+		roverControls.gameObject.SetActive(false);
+		
+		actor.anim.SetInteger("gear", 0);
+		actor.anim.SetBool("changeGear", false);
+		actor.anim.SetBool("idle", true);
+		actor.anim.SetBool("brake",false);
+		actor.anim.SetFloat("speed",0);
+		actor.anim.SetBool("tractor",false);
+		actor.anim.SetBool("harvesting",false);
+		actor.anim.SetFloat("turning",0);
+		
 		
 	}
 	

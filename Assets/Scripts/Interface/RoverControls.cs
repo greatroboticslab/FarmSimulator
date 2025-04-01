@@ -15,6 +15,10 @@ public class RoverControls : MonoBehaviour
 	public Button toggleViewButton2;
 	public GameObject plantMenu;
 	public GameObject recordingNotification;
+	public Button mainMenuButton;
+	public GameObject confirmMainMenuWindow;
+	public Button yesMainMenu;
+	public Button noMainMenu;
 	
 	private float timeSinceRecordingStarted = 0f;
 	
@@ -25,6 +29,9 @@ public class RoverControls : MonoBehaviour
 		recordButton.onClick.AddListener(ToggleRecording);
 		toggleViewButton.onClick.AddListener(ToggleView);
 		toggleViewButton2.onClick.AddListener(ToggleView);
+		mainMenuButton.onClick.AddListener(ShowMainMenuWindow);
+		yesMainMenu.onClick.AddListener(GoToMainMenu);
+		noMainMenu.onClick.AddListener(HideMainMenuWindow);
     }
 
     // Update is called once per frame
@@ -80,6 +87,24 @@ public class RoverControls : MonoBehaviour
 	
 	private void ToggleView() {
 		PathMaker.Instance.manip.ToggleView();
+	}
+	
+	private void GoToMainMenu() {
+		
+		confirmMainMenuWindow.SetActive(false);
+		PathMaker.Instance.GoToMainMenu();
+		
+	}
+	
+	private void ShowMainMenuWindow() {
+		
+		confirmMainMenuWindow.SetActive(true);
+		
+	}
+	private void HideMainMenuWindow() {
+		
+		confirmMainMenuWindow.SetActive(false);
+		
 	}
 	
 }

@@ -14,4 +14,35 @@ Inside the repo is a folder called ml-agents-release_22, which is a repackaged r
     mlagents-learn humanoidconfig.yaml --run-id=run_name
 
 To run the trainer, which will save the results in results/run_name.
+
+![playground](Media/training.png "Playground")
+
 Then, run the game, and select the Humanoid (Training) option, and start it. The humanoid will automatically connect, and begin training. Fitness is defined in the Director script, and currently is set to try to train for walking forwards.
+
+# User's Guide
+
+![main menu](Media/1.png "Main Menu")
+
+To use the game as a user, start the game. It will take you to a selection screen. Press the "Select Robot" button, and then click on one of the robots. You can then either select a pre-defined location from the drop-down menu, or enter the coordinates of your farm. When you are finished, press the Go to Farm button.
+
+![in game](Media/2.png "In the game.")
+
+After a few seconds, the terrain will load, and your robot will be placed in the center. There are a few options on the right:
+
+ - Self Driving: If checked, the rover or humanoid will drive itself via script to harvest or perform actions on crops. If unchecked, the user has control over the rover or humanoid. The WASD or arrow keys can be used to control movement. If the rover has an arm, the user can hold down a number key and use W or S / up arrow or down arrow to control that joint.
+ - Science QA Format: If checked, any recordings made will have the inputs converted to a human-readable question and answer format, asking what the rover should do given the current frame and situation. If unchecked, the recording data is saved as raw text files with floats from 0 - 1 for the controls.
+ - Plant Crops: Goes into planting mode.
+ - Start Recording: Begins recording the game. Images are saved every frame, using the rover's camera. Along with each image saved, a text file is saved giving the current position, velocity, and other variables, and the current output. This is the data to be used to train via imitation learning.
+ - Main Menu (Exit): Returns to the main menu.
+
+### Planting
+
+![planting](Media/3.png "Planting Mode")
+
+If you press the Plant Crops button, the camera angle will change, and you will enter planting mode. You can use the WASD/arrow keys to move the camera. A new menu will also pop up with different crops. Row and column density determine how many crops are planted per row and column, these must be above zero or no crops will be planted. Weed density controls how many weeds are present in the plot.
+
+Once you have your desired settings, click and drag on the map. It will create a square plot, and you can place multiple plots. Once you are finished, you can press enter, and the crops will be planted.
+
+![harvesting](Media/4.png "Harvesting")
+
+Now that the crops are planted, if you are in self-driving mode, the rover or humanoid will attempt to harvest the crops. This usually where you want to start recording.

@@ -1,5 +1,9 @@
 # Farming Simulator
+
+### When first opening, make sure you open the correct scene by double clicking on Assets/Scenes/SampleScene.unity
+
 ## Developer's Guide
+
 ### Scripting
 Scripts are stored in Assets/Scripts. Some important scripts are:
 

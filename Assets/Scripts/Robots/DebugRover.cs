@@ -27,6 +27,7 @@ public class DebugRover : MonoBehaviour
 	public float charge;
 	public float powerUsage;
 	public List<AxleInfo> axles; //list of axles
+	public List<RotateWheel> wheelRot;
 	public PathMaker.Waypoint currentWaypoint;   //attribute of pathmaker attribute named current waypoint 
 	public Vector2 currentWaypointLATLNG; // vector of current lat/lang
 	public GameObject camOrg; //?
@@ -38,6 +39,7 @@ public class DebugRover : MonoBehaviour
 	public float rTrigger;
 	public PlayerControls controls;
 	public bool armMode;
+	public float currentFriction = 1f;
 	
 	public bool selfDriving;
 	private float turnInput;
@@ -521,6 +523,13 @@ public class DebugRover : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+		
+		wheelRot = new List<RotateWheel>();
+		foreach(AxleInfo axle in axles) {
+			wheelRot.Add(axle.wheels[0].GetComponent<RotateWheel>());
+			wheelRot.Add(axle.wheels[1].GetComponent<RotateWheel>());
+		}
+		
 		controls = new PlayerControls();
 		controls.Gameplay.Enable();
 		
@@ -534,9 +543,32 @@ public class DebugRover : MonoBehaviour
 		
     }
 
+	//Do things related to traction / slipperyness of map
+	void TractionUpdate() {
+		
+		//Debug.Log(mapInfo.tractionZone.GetTraction(transform.position));
+		currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
+		//Debug.Log(mapInfo.tractionZone.tractionGrid[0,0]);
+		
+		foreach(RotateWheel w in wheelRot) {
+			WheelFrictionCurve ff = w.col.forwardFriction;
+			ff.stiffness = w.initialStiffness[0] * currentFriction;
+			w.col.forwardFriction = ff;
+			
+			WheelFrictionCurve sf = w.col.sidewaysFriction;
+			sf.stiffness = w.initialStiffness[1] * currentFriction;
+			w.col.sidewaysFriction = sf;
+			
+		}
+		
+	}
+
     // Update is called once per frame
     void Update()
     {
+		
+		TractionUpdate();
+		
 		
 		controls.Gameplay.toggleArm.performed += ctx => armMode = !armMode;
 		

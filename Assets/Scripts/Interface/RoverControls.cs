@@ -19,6 +19,7 @@ public class RoverControls : MonoBehaviour
 	public GameObject confirmMainMenuWindow;
 	public Button yesMainMenu;
 	public Button noMainMenu;
+	public TMP_Text frictionDisplay;
 	
 	private float timeSinceRecordingStarted = 0f;
 	
@@ -38,6 +39,7 @@ public class RoverControls : MonoBehaviour
     void Update()
     {
         if(PathMaker.Instance.rover != null) {
+			frictionDisplay.text = "Friction: " + PathMaker.Instance.rover.currentFriction;
 			PathMaker.Instance.rover.selfDriving = selfDriving.isOn;
 			PathMaker.Instance.rover.scienceQA = scienceQA.isOn;
 		}

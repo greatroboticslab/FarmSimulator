@@ -6,13 +6,15 @@ using UnityEngine;
 
 public class RotateWheel : MonoBehaviour
 {
-	private WheelCollider col;
+	public WheelCollider col;
 	public Transform visWheel;
+	public Vector2 initialStiffness;
 	
     // Start is called before the first frame update
     void Start()
     {
         col = GetComponent<WheelCollider>();
+		initialStiffness = new Vector2(col.forwardFriction.stiffness,col.sidewaysFriction.stiffness);
 		visWheel.transform.localScale = transform.localScale;
     }
 

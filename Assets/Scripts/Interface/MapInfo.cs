@@ -9,6 +9,8 @@ public class MapInfo : MonoBehaviour
 	public float longitude;
 	public Transform spawn;
 	private float circumference = 40075000f;
+	public float size = 1024f;
+	public TractionZone tractionZone;
 	
 	public Vector2 PosToCoords(Vector3 pos) {
 		float lat = 0;

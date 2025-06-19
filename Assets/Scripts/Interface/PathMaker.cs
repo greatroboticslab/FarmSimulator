@@ -24,6 +24,8 @@ public class PathMaker : MonoBehaviour
 	public bool useTerrain;
 	public Director director;
 	public GameObject selectMenuObj;
+	public List<GameObject> tractionSpots;
+	public Material ghostMaterial; //Material used for showing the guide/outline for placing items on the map
 	
 	public string currentLocationName;
 	

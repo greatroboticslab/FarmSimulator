@@ -550,6 +550,18 @@ public class DebugRover : MonoBehaviour
 		currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
 		//Debug.Log(mapInfo.tractionZone.tractionGrid[0,0]);
 		
+		float rayDistance = 1.0f;
+		int layer17Mask = 1 << 17;
+		
+		Ray ray = new Ray(transform.position + new Vector3(0f,0.3f,0f), Vector3.down);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, rayDistance, layer17Mask))
+        {
+			//Debug.Log("Traction Zone!");
+			currentFriction = hit.collider.gameObject.GetComponent<TractionSpot>().traction;
+		}
+		
 		foreach(RotateWheel w in wheelRot) {
 			WheelFrictionCurve ff = w.col.forwardFriction;
 			ff.stiffness = w.initialStiffness[0] * currentFriction;

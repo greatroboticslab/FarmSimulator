@@ -10,16 +10,19 @@ public class RoverControls : MonoBehaviour
 	public Toggle selfDriving;
 	public Toggle scienceQA;
 	public Button plantButton;
+	public Button tractionButton;
 	public Button recordButton;
 	public Button toggleViewButton;
 	public Button toggleViewButton2;
 	public GameObject plantMenu;
+	public GameObject tractionMenu;
 	public GameObject recordingNotification;
 	public Button mainMenuButton;
 	public GameObject confirmMainMenuWindow;
 	public Button yesMainMenu;
 	public Button noMainMenu;
 	public TMP_Text frictionDisplay;
+	public TMP_Dropdown tractionDropdown;
 	
 	private float timeSinceRecordingStarted = 0f;
 	
@@ -27,12 +30,17 @@ public class RoverControls : MonoBehaviour
     void Start()
     {
         plantButton.onClick.AddListener(TogglePlanting);
+		tractionButton.onClick.AddListener(ToggleTraction);
 		recordButton.onClick.AddListener(ToggleRecording);
 		toggleViewButton.onClick.AddListener(ToggleView);
 		toggleViewButton2.onClick.AddListener(ToggleView);
 		mainMenuButton.onClick.AddListener(ShowMainMenuWindow);
 		yesMainMenu.onClick.AddListener(GoToMainMenu);
 		noMainMenu.onClick.AddListener(HideMainMenuWindow);
+		
+		tractionDropdown.onValueChanged.AddListener(delegate {
+            TractionDropdownValueChanged(tractionDropdown);
+        });
     }
 
     // Update is called once per frame
@@ -55,10 +63,17 @@ public class RoverControls : MonoBehaviour
 		
     }
 	
+	public void TractionDropdownValueChanged(TMP_Dropdown d) {
+		
+		PathMaker.Instance.manip.UpdatePlacer(d.value);
+		
+	}
+	
 	private void TogglePlanting() {
 		if(plantMenu.activeSelf) {
 			plantMenu.SetActive(false);
-			PathMaker.Instance.manip.placingPlot = true;
+			PathMaker.Instance.manip.placingPlot = false;
+			PathMaker.Instance.manip.EndEditMode();
 		}
 		else {
 			plantMenu.SetActive(true);
@@ -66,6 +81,22 @@ public class RoverControls : MonoBehaviour
 			PathMaker.Instance.mainCam.mode = 2;
 			PathMaker.Instance.placeCamOrg.transform.position = PathMaker.Instance.mainCam.focusedRobot.transform.position + new Vector3(0,15,0);
 		}
+	}
+	
+	private void ToggleTraction() {
+		
+		if(tractionMenu.activeSelf) {
+			tractionMenu.SetActive(false);
+			PathMaker.Instance.manip.EndEditMode();
+		}
+		else {
+			tractionMenu.SetActive(true);
+			PathMaker.Instance.manip.UpdatePlacer(0);
+			PathMaker.Instance.manip.placingTraction = true;
+			PathMaker.Instance.mainCam.mode = 2;
+			PathMaker.Instance.placeCamOrg.transform.position = PathMaker.Instance.mainCam.focusedRobot.transform.position + new Vector3(0,15,0);
+		}
+		
 	}
 	
 	private void ToggleRecording() {

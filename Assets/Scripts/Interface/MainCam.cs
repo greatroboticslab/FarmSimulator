@@ -96,7 +96,9 @@ public class MainCam : MonoBehaviour
 			}
 			
 			if(Input.GetKeyDown(KeyCode.Return)) {
-				mode = 1;
+				
+				PathMaker.Instance.manip.EndEditMode();
+				
 			}
 		}
 		

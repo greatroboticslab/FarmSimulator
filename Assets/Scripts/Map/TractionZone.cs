@@ -10,11 +10,12 @@ public class TractionZone : MonoBehaviour
 	public float[,] tractionGrid;
 	
 	//  Test function to give the grid a checkerboard pattern of values 0 and 1
-	public void Checkerboard() {
+	public void Checkerboard(float _min, float _max) {
+		Vector2 vals = new Vector2(_min, _max);
 		int v = 0;
 		for(int y = 0; y < resolution; y++) {
 			for(int x = 0; x < resolution; x++) {
-				tractionGrid[x,y] = v;
+				tractionGrid[x,y] = vals[v];
 				v += 1;
 				if(v > 1) {
 					v = 0;
@@ -60,7 +61,7 @@ public class TractionZone : MonoBehaviour
     void Start()
     {
         tractionGrid = new float[resolution,resolution];
-		Checkerboard();
+		Checkerboard(1f, 1f);
 		
     }
 

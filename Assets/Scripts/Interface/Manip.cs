@@ -34,6 +34,8 @@ public class Manip : MonoBehaviour
 	public GameObject plotHelperPrefab;
 	public List<GameObject> plotHelpers;
 	public bool placingPlot;
+	public bool paintingTraction;
+	public bool placingTraction;
 
 	public Vector2 plotTopLeft;
 	public Vector2 plotBottomRight;
@@ -52,6 +54,21 @@ public class Manip : MonoBehaviour
 	
 	public RectTransform cropPanel;
 	
+	public GameObject placeGhost;
+	
+	public void UpdatePlacer(int m) {
+		
+		if(placeGhost != null) {
+			Destroy(placeGhost);
+		}
+		placeGhost = new GameObject();
+		placeGhost.AddComponent<MeshFilter>();
+		placeGhost.GetComponent<MeshFilter>().mesh = PathMaker.Instance.tractionSpots[m].GetComponent<TractionSpot>().mesh;
+		placeGhost.AddComponent<MeshRenderer>();
+		placeGhost.GetComponent<MeshRenderer>().material = PathMaker.Instance.ghostMaterial;
+		
+	}
+	
 	public bool MouseInPlotPanel() {
 		
 		Vector3 mousePos = Input.mousePosition;
@@ -63,6 +80,17 @@ public class Manip : MonoBehaviour
 		}
 		
 		return false;
+	}
+	
+	public void EndEditMode() {
+		
+		placingPlot = false;
+		placingTraction = false;
+		if(placeGhost) {
+			Destroy(placeGhost);
+		}
+		cam.mode = 1;
+		
 	}
 
     // Start is called before the first frame update
@@ -171,11 +199,40 @@ public class Manip : MonoBehaviour
 			}
 		}
 		
+		
+		//Placing traction spots
+		if(placingTraction) {
+			
+			RaycastHit hit;
+			Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
+				if (Physics.Raycast (ray, out hit, 4000f)) {
+					
+					if(placeGhost) {
+						placeGhost.transform.position = hit.point;
+						
+						if(Input.GetMouseButtonDown(0)) {
+							
+							if(!MouseInPlotPanel()) {
+								
+								GameObject newTractionSpot = Instantiate(PathMaker.Instance.tractionSpots[PathMaker.Instance.roverControls.tractionDropdown.value]);
+								newTractionSpot.transform.position = hit.point;
+								
+							}
+						}
+						
+					}
+					
+				}
+			
+		}
+		
 		//Place plot
 		if(Input.GetKeyDown("p")) {
 			placingPlot = !placingPlot;
 		}
 		
+		
+		//Placing crop plots
 		if(placingPlot) {
 			
 			if(Input.GetKeyDown("[+]")) {

@@ -50,3 +50,9 @@ Once you have your desired settings, click and drag on the map. It will create a
 ![harvesting](Media/4.png "Harvesting")
 
 Now that the crops are planted, if you are in self-driving mode, the rover or humanoid will attempt to harvest the crops. This usually where you want to start recording.
+
+### Traction Spots
+
+![traction](Media/traction1.png "Placing traction spots.")
+
+You can place different spots or patches that have different traction values. For instance, grass has low traction, water has lower traction, and rovers can get stuck in dirt. To place these spots down, press the "Edit Traction" button, and select the patch type. You can then place down the objects, highlighted by a blue outline.

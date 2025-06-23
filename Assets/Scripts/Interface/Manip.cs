@@ -153,6 +153,9 @@ public class Manip : MonoBehaviour
 			if(!PathMaker.Instance.humanoid) {
 				curRobot.GetComponent<DebugRover>().mapInfo = terrain.GetComponent<MapInfo>();
 			}
+			else {
+				curRobot.GetComponent<HumanoidRobot>().mapInfo = terrain.GetComponent<MapInfo>();
+			}
 			curRobot.transform.position = terrain.GetComponent<MapInfo>().spawn.position;
 			cam.camPos = terrain.GetComponent<MapInfo>().spawn.position;
     	}

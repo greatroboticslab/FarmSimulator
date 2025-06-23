@@ -53,6 +53,7 @@ public class RoverControls : MonoBehaviour
 		}
 		
 		if(PathMaker.Instance.humanoidRobot != null) {
+			frictionDisplay.text = "Friction: " + PathMaker.Instance.humanoidRobot.currentFriction;
 			PathMaker.Instance.humanoidRobot.selfDriving = selfDriving.isOn;
 		}
 		

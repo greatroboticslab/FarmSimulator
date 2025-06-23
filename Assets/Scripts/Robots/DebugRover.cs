@@ -40,6 +40,7 @@ public class DebugRover : MonoBehaviour
 	public PlayerControls controls;
 	public bool armMode;
 	public float currentFriction = 1f;
+	public bool stuck;
 	
 	public bool selfDriving;
 	private float turnInput;
@@ -546,29 +547,42 @@ public class DebugRover : MonoBehaviour
 	//Do things related to traction / slipperyness of map
 	void TractionUpdate() {
 		
+		float stuckFactor = 0;
+		
 		//Debug.Log(mapInfo.tractionZone.GetTraction(transform.position));
 		currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
 		//Debug.Log(mapInfo.tractionZone.tractionGrid[0,0]);
 		
-		float rayDistance = 1.0f;
+		float rayDistance = 1.7f;
 		int layer17Mask = 1 << 17;
 		
-		Ray ray = new Ray(transform.position + new Vector3(0f,0.3f,0f), Vector3.down);
+		Ray ray = new Ray(transform.position + new Vector3(0f,0.9f,0f), Vector3.down);
         RaycastHit hit;
 
         if (Physics.Raycast(ray, out hit, rayDistance, layer17Mask))
         {
 			//Debug.Log("Traction Zone!");
 			currentFriction = hit.collider.gameObject.GetComponent<TractionSpot>().traction;
+			stuckFactor = hit.collider.gameObject.GetComponent<TractionSpot>().stuckFactor;
+		}
+		float stuckScore = Mathf.Abs(forwardInput) * stuckFactor * 0.01f;
+		if(Random.value < stuckScore) {
+			stuck = true;
 		}
 		
 		foreach(RotateWheel w in wheelRot) {
 			WheelFrictionCurve ff = w.col.forwardFriction;
 			ff.stiffness = w.initialStiffness[0] * currentFriction;
+			if(stuck) {
+				ff.stiffness = 0;
+			}
 			w.col.forwardFriction = ff;
 			
 			WheelFrictionCurve sf = w.col.sidewaysFriction;
 			sf.stiffness = w.initialStiffness[1] * currentFriction;
+			if(stuck) {
+				sf.stiffness = 0;
+			}
 			w.col.sidewaysFriction = sf;
 			
 		}

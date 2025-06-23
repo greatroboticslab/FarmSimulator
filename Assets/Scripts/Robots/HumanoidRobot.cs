@@ -45,6 +45,10 @@ public class HumanoidRobot : MonoBehaviour
 	private bool readyToHarvest;
 	public float maxTimePerFruit = 15f;
 	private float timeOnFruit;
+	public float currentFriction = 1f;
+	public bool stuck;
+	public MapInfo mapInfo; //class map info
+	public bool falling;
 	
 	public FollowerRover basketRover;
 	
@@ -143,7 +147,9 @@ public class HumanoidRobot : MonoBehaviour
 	//Kinematically copy a skeletons pose
 	public void CopySkeleton(ReferenceSkeleton targetSkeleton) {
 		
-		//CopyJoint(refSkeleton.pelvis, targetSkeleton.pelvis);
+		if(falling) {
+			CopyJoint(refSkeleton.pelvis, targetSkeleton.pelvis);
+		}
 		//refSkeleton.pelvis.rotation.eulerAngles.x = targetSkeleton.pelvis.rotation.eulerAngles.x;
 		
 		
@@ -1345,9 +1351,52 @@ public class HumanoidRobot : MonoBehaviour
 		
 	}
 	
+	//Do things related to traction / slipperyness of map
+	void TractionUpdate() {
+		
+		float slipFactor = 0;
+		
+		//Debug.Log(mapInfo.tractionZone.GetTraction(transform.position));
+		currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
+		//Debug.Log(mapInfo.tractionZone.tractionGrid[0,0]);
+		
+		float rayDistance = 2.3f;
+		int ignoreLayer11 = 1 << 11;
+		int ignoreLayer12 = 1 << 12;
+
+		// Combine and invert the mask
+		int layerMask = ~(ignoreLayer11 | ignoreLayer12);
+		
+		Ray ray = new Ray(transform.position + new Vector3(0f,0.9f,0f), Vector3.down);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, rayDistance, layerMask))
+        {
+			if (hit.collider.CompareTag("tractionSpot")) {
+				Debug.Log("Traction Zone!");
+				currentFriction = hit.collider.gameObject.GetComponent<TractionSpot>().traction;
+			}
+		}
+		slipFactor = 1f - currentFriction;
+		if(slipFactor < 0.5f) {
+			slipFactor = 0;
+		}
+		float slipScore = Mathf.Abs(forward) * slipFactor * 0.01f;
+		if(Random.value < slipScore) {
+			falling = true;
+			actor.anim.SetBool("falling",true);
+		}
+		
+		
+		
+	}
+	
     // Start is called before the first frame update
     void Start()
     {
+		
+		
+		
 		if(training) {
 			//director = transform.parent.gameObject.GetComponent<Director>();
 			director = PathMaker.Instance.director;
@@ -1374,6 +1423,7 @@ public class HumanoidRobot : MonoBehaviour
 	
 	void Update() {
 		
+		TractionUpdate();
 		
 		heading = transform.eulerAngles.y;
 		
@@ -1430,12 +1480,17 @@ public class HumanoidRobot : MonoBehaviour
 				MoveUpdate();
 			}
 			
-			transform.Rotate(new Vector3(0,leftRight*Time.deltaTime*turnSpeed,0), Space.Self);
+			
 			CopySkeleton(actor.refSkeleton);
 			//rotation += leftRight*Time.deltaTime*turnSpeed;
 			//transform.Rotate(new Vector3(0,rotation,0), Space.Self);
 			
-			transform.position += transform.forward*forward*Time.deltaTime*walkSpeed;
+			if(!falling) {
+			
+				transform.Rotate(new Vector3(0,leftRight*Time.deltaTime*turnSpeed,0), Space.Self);
+				transform.position += transform.forward*forward*Time.deltaTime*walkSpeed;
+			
+			}
 			
 			if(forward != 0 && !ridingTractor) {
 				
@@ -1447,6 +1502,9 @@ public class HumanoidRobot : MonoBehaviour
 					float hHeight = standHeight;
 					if(harvesting) {
 						hHeight = kneelHeight;
+					}
+					if(falling) {
+						hHeight = 0.1f;
 					}
 					transform.position = new Vector3(transform.position.x, ghit.point.y + hHeight, transform.position.z);
 				}

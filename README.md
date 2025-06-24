@@ -59,12 +59,10 @@ You can place different spots or patches that have different traction values. Fo
 
 ## Animations
 
-Animations are stored as .fbx file in the Animations asset folder. You can either manually create them, or use MoMask and our conversion script in the 
+Animations are stored as .fbx file in the Animations asset folder. You can either manually create them, or use MoMask and our conversion script in the FarmSimulatorBlender repo. After importing a new animation, you need to set the avatar to be humanoid, or the animation will not work.
 
 ![anim_humanoid](Media/anim1.png "Setting the animation avatar to be humanoid")
 
-After importing a new animation, you need to set the avatar to be humanoid, or the animation will not work.
+Once you have finished importing and setting the animation to be humanoid, you can then navigate to the Robots folder, and double click on walkcontroller.controller, and it will open up the animator window. You can drag and drop imported animations (for .fbx files, make sure to click the side arrow to expand the file to see the animation clips stored within) into the animator window, and create transitions from there.
 
 ![anim_controller](Media/anim2.png "Opening the animation controller")
-
-Once you have finished importing and setting the animation to be humanoid, you can then navigate to the Robots folder, and double click on walkcontroller.controller, and it will open up the animator window. You can drag and drop imported animations (for .fbx files, make sure to click the side arrow to expand the file to see the animation clips stored within) into the animator window, and create transitions from there.

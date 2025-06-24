@@ -1355,6 +1355,7 @@ public class HumanoidRobot : MonoBehaviour
 	void TractionUpdate() {
 		
 		float slipFactor = 0;
+		float stuckFactor = 0;
 		
 		//Debug.Log(mapInfo.tractionZone.GetTraction(transform.position));
 		currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
@@ -1375,16 +1376,29 @@ public class HumanoidRobot : MonoBehaviour
 			if (hit.collider.CompareTag("tractionSpot")) {
 				Debug.Log("Traction Zone!");
 				currentFriction = hit.collider.gameObject.GetComponent<TractionSpot>().traction;
+				stuckFactor = hit.collider.gameObject.GetComponent<TractionSpot>().stuckFactor;
 			}
 		}
-		slipFactor = 1f - currentFriction;
-		if(slipFactor < 0.5f) {
-			slipFactor = 0;
+		
+		float stuckScore = Mathf.Abs(forward) * stuckFactor * 0.01f;
+		if(Random.value < stuckScore) {
+			stuck = true;
 		}
-		float slipScore = Mathf.Abs(forward) * slipFactor * 0.01f;
-		if(Random.value < slipScore) {
-			falling = true;
-			actor.anim.SetBool("falling",true);
+		
+		if(stuck) {
+			actor.anim.SetBool("stuck",true);
+		}
+		
+		else {
+			slipFactor = 1f - currentFriction;
+			if(slipFactor < 0.5f) {
+				slipFactor = 0;
+			}
+			float slipScore = Mathf.Abs(forward) * slipFactor * 0.01f;
+			if(Random.value < slipScore) {
+				falling = true;
+				actor.anim.SetBool("falling",true);
+			}
 		}
 		
 		
@@ -1485,7 +1499,11 @@ public class HumanoidRobot : MonoBehaviour
 			//rotation += leftRight*Time.deltaTime*turnSpeed;
 			//transform.Rotate(new Vector3(0,rotation,0), Space.Self);
 			
-			if(!falling) {
+			if(falling || stuck) {
+				// Do not move
+			}
+			
+			else {
 			
 				transform.Rotate(new Vector3(0,leftRight*Time.deltaTime*turnSpeed,0), Space.Self);
 				transform.position += transform.forward*forward*Time.deltaTime*walkSpeed;

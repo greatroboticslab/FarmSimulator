@@ -63,10 +63,13 @@ public class PathMaker : MonoBehaviour
 	public Manip manip;
 	public GameObject plotControls;
 	
+	public int cropCategory; //0 = Regular, 1 = VGGT
 	public List<GameObject> cropList;
-	
+	public List<GameObject> vggtCropList;	
+
 	public GameObject selectedCrop;
 	public int selectedCropId;
+	public int selectedVGGTCropId;
 	public RobotInfo selectedRobot;
 	public bool humanoid;
 	public bool useTractor;
@@ -262,6 +265,11 @@ public class PathMaker : MonoBehaviour
 			PlaceDown(PathMaker.Instance.currentRobot.GetComponent<HumanoidRobot>());
 		}
 		
-        selectedCrop = cropList[selectedCropId];
+	if(cropCategory == 0) {
+        	selectedCrop = cropList[selectedCropId];
+	}
+	if(cropCategory == 1) {
+		selectedCrop = vggtCropList[selectedCropId];
+	}
     }
 }

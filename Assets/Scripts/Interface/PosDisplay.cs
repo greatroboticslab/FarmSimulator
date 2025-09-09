@@ -22,7 +22,9 @@ public class PosDisplay : MonoBehaviour
 	public Slider weedSlider;
 	public Slider xSlider;
 	public Slider ySlider;
+	public TMP_Dropdown cropCategory;
 	public TMP_Dropdown cropSelect;
+	public TMP_Dropdown vggtCropSelect;
 	
 	public TMP_Text wristText1;
 	public TMP_Text wristPowerLevel;
@@ -45,6 +47,19 @@ public class PosDisplay : MonoBehaviour
     {
 		
 		if(plotPanel.active == true) {
+
+			if(cropCategory.value == 0) {
+				PathMaker.Instance.cropCategory = 0;
+				cropSelect.gameObject.SetActive(true);
+				vggtCropSelect.gameObject.SetActive(false);
+			}
+			if(cropCategory.value == 1) {
+				Debug.Log("VGGT");
+				PathMaker.Instance.cropCategory = 1;
+				cropSelect.gameObject.SetActive(false);
+				vggtCropSelect.gameObject.SetActive(true);
+			}
+
 			PathMaker.Instance.weedDensity = weedSlider.value;
 			PathMaker.Instance.xDensity = xSlider.value;
 			PathMaker.Instance.yDensity = ySlider.value;
@@ -53,6 +68,7 @@ public class PosDisplay : MonoBehaviour
 			weedDensityDisplay.text = "Weed Density: " + PathMaker.Instance.weedDensity.ToString("0.00");
 			
 			PathMaker.Instance.selectedCropId = cropSelect.value;
+			PathMaker.Instance.selectedVGGTCropId = vggtCropSelect.value;
 			
 			if(cropSelect.value != lastPlant) {
 				if(cropSelect.value == 1) {

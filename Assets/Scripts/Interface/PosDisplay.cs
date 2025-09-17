@@ -22,13 +22,16 @@ public class PosDisplay : MonoBehaviour
 	public Slider weedSlider;
 	public Slider xSlider;
 	public Slider ySlider;
-	public TMP_Dropdown cropCategory;
-	public TMP_Dropdown cropSelect;
-	public TMP_Dropdown vggtCropSelect;
+	public RectTransform cropSelectRect;
+	public GameObject cropSelect;
+	public GameObject robotConfig;
 	
 	public TMP_Text wristText1;
 	public TMP_Text wristPowerLevel;
 	public GameObject wristLightDisplay;
+
+	public Button selectCropButton;
+	public Button configRobotButton;
 	
 	private int lastPlant;
 	
@@ -37,6 +40,10 @@ public class PosDisplay : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+
+	selectCropButton.onClick.AddListener(() => CropButtonPressed());
+	configRobotButton.onClick.AddListener(() => RobotConfigButtonPressed());
+
         t = GetComponent<Text>();
 		moistureText.color = new Color(1,0,0,0);
 		lastPlant = 0;
@@ -48,18 +55,6 @@ public class PosDisplay : MonoBehaviour
 		
 		if(plotPanel.active == true) {
 
-			if(cropCategory.value == 0) {
-				PathMaker.Instance.cropCategory = 0;
-				cropSelect.gameObject.SetActive(true);
-				vggtCropSelect.gameObject.SetActive(false);
-			}
-			if(cropCategory.value == 1) {
-				Debug.Log("VGGT");
-				PathMaker.Instance.cropCategory = 1;
-				cropSelect.gameObject.SetActive(false);
-				vggtCropSelect.gameObject.SetActive(true);
-			}
-
 			PathMaker.Instance.weedDensity = weedSlider.value;
 			PathMaker.Instance.xDensity = xSlider.value;
 			PathMaker.Instance.yDensity = ySlider.value;
@@ -67,9 +62,9 @@ public class PosDisplay : MonoBehaviour
 			yDensityDisplay.text = "Column Density: " + PathMaker.Instance.yDensity.ToString("0.00");
 			weedDensityDisplay.text = "Weed Density: " + PathMaker.Instance.weedDensity.ToString("0.00");
 			
-			PathMaker.Instance.selectedCropId = cropSelect.value;
-			PathMaker.Instance.selectedVGGTCropId = vggtCropSelect.value;
-			
+			//PathMaker.Instance.selectedCropId = cropSelect.value;
+			//PathMaker.Instance.selectedVGGTCropId = vggtCropSelect.value;
+			/*
 			if(cropSelect.value != lastPlant) {
 				if(cropSelect.value == 1) {
 					//Strawberry
@@ -78,6 +73,7 @@ public class PosDisplay : MonoBehaviour
 				}
 			}
 			lastPlant = cropSelect.value;
+			*/
 			
 		}
 		
@@ -112,4 +108,20 @@ public class PosDisplay : MonoBehaviour
 			
 		}
     }
+
+void CropButtonPressed() {
+
+	cropSelect.SetActive(!cropSelect.activeInHierarchy);
+
 }
+
+void RobotConfigButtonPressed() {
+
+	robotConfig.SetActive(!robotConfig.activeInHierarchy);
+
+}
+
+}
+
+
+

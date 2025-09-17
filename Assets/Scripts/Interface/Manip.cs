@@ -72,11 +72,27 @@ public class Manip : MonoBehaviour
 	public bool MouseInPlotPanel() {
 		
 		Vector3 mousePos = Input.mousePosition;
+		RectTransform cropSelectPanel = PathMaker.Instance.posDisplay.cropSelectRect;
 		//Debug.Log(cropPanel.sizeDelta);
 		
 		if(mousePos.x >= Screen.width - cropPanel.rect.width && mousePos.y <= cropPanel.rect.height) {
 			//Debug.Log("INPANEL");
 			return true;
+		}
+
+		Vector3[] worldCorners = new Vector3[4];
+		cropSelectPanel.GetWorldCorners(worldCorners);
+
+		float width  = Vector3.Distance(worldCorners[0], worldCorners[3]); // left to right
+		float height = Vector3.Distance(worldCorners[0], worldCorners[1]); // bottom to top
+		Vector2 globalSize = new Vector2(width, height);
+
+		Debug.Log("Mpos: " + mousePos + ", Pos: " + cropSelectPanel.position + ", w: " + width);
+
+		if(mousePos.x >= cropSelectPanel.position.x - (width/2) && mousePos.x <= (cropSelectPanel.position.x - (width/2)) + globalSize.x) {
+			if(mousePos.y >= cropSelectPanel.position.y - (height/2) && mousePos.y <= (cropSelectPanel.position.y - (height/2)) + globalSize.y) {
+				return true;
+			}
 		}
 		
 		return false;
@@ -84,6 +100,18 @@ public class Manip : MonoBehaviour
 	
 	public void EndEditMode() {
 		
+		Debug.Log("PLACING PLOTS");
+		foreach(GameObject plot in plotHelpers) {
+			plot.GetComponent<PlotHelper>().weedDensity = PathMaker.Instance.weedDensity;
+			plot.GetComponent<PlotHelper>().PlacePlot();
+		}
+		while(plotHelpers.Count > 0) {
+			Debug.Log("DELETING");
+			GameObject p = plotHelpers[0];
+			plotHelpers.RemoveAt(0);
+			Destroy(p);
+		}
+
 		placingPlot = false;
 		placingTraction = false;
 		if(placeGhost) {
@@ -143,6 +171,16 @@ public class Manip : MonoBehaviour
 		PathMaker.Instance.selectMenuObj.SetActive(false);
 		
 		PathMaker.Instance.currentRobot = curRobot;
+
+	if(PathMaker.Instance.humanoid) {
+		PathMaker.Instance.robotConfig.humanoid = curRobot.GetComponent<HumanoidRobot>();
+	}
+	else {
+		PathMaker.Instance.robotConfig.rover = curRobot.GetComponent<DebugRover>();
+	}
+	PathMaker.Instance.robotConfig.InitializeValues();
+	PathMaker.Instance.robotConfig.sync = true;
+
     	curRobot.transform.position = Vector3.zero;
     	cam.camPos = new Vector3(0.4f,1,-0.4f);
     	cam.targetPos = new Vector3(0,1.0f,0);
@@ -189,6 +227,8 @@ public class Manip : MonoBehaviour
     void Update()
     {
 		
+	//Debug.Log(placingPlot);
+
 		if(PathMaker.Instance != null) {
 			if(!started && PathMaker.Instance.mapReady) {
 				if(quickStart) {
@@ -302,16 +342,7 @@ public class Manip : MonoBehaviour
 			}
 			
 			if(Input.GetKeyDown(KeyCode.Return)) {
-				placingPlot = false;
-				foreach(GameObject plot in plotHelpers) {
-					plot.GetComponent<PlotHelper>().weedDensity = PathMaker.Instance.weedDensity;
-					plot.GetComponent<PlotHelper>().PlacePlot();
-				}
-				while(plotHelpers.Count > 0) {
-					GameObject p = plotHelpers[0];
-					plotHelpers.RemoveAt(0);
-					Destroy(p);
-				}
+				//Defunct
 			}
 			
 		}

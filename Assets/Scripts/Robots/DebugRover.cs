@@ -40,6 +40,7 @@ public class DebugRover : MonoBehaviour
 	public PlayerControls controls;
 	public bool armMode;
 	public float currentFriction = 1f;
+	public float frictionMultiplier = 1f;
 	public bool stuck;
 	
 	public bool selfDriving;
@@ -52,10 +53,11 @@ public class DebugRover : MonoBehaviour
 	public float netTurnInput;
 	public float netLightInput;
 	
-	private float minDistance = 0.19f;
-	private float checkDistance = 0.2f;
-	private float closeSpeed = 0.3f;
-	private float cruiseSpeed = 5f;
+	public float minDistance = 0.19f;
+	public float checkDistance = 0.2f;
+	public float closeSpeed = 0.3f;
+	public float cruiseSpeed = 5f;
+	public float headingThreshold = 1.2f; //If less than this value, rover is assumed to be facing the correct direction.
 	
 	private float maxLightTime = 5f;
 	private float lightTime;
@@ -408,13 +410,13 @@ public class DebugRover : MonoBehaviour
 					bool reached = false;
 					if(currentWaypoint.checkWater) {
 						if(currentWaypoint.aimOnly) {
-							if(Mathf.Abs(deltaHeading) <= 1.2f) {
+							if(Mathf.Abs(deltaHeading) <= headingThreshold) {
 								reached = true;
 							}
 						}
 						else {
 							if(Vector3.Distance(rPos, currentWaypoint.pos) < checkDistance) {
-								if(Mathf.Abs(deltaHeading) <= 1.2f) {
+								if(Mathf.Abs(deltaHeading) <= headingThreshold) {
 									reached = true;
 								}
 							}
@@ -422,7 +424,7 @@ public class DebugRover : MonoBehaviour
 					}
 					else if(currentWaypoint.pickFruit) {
 						if(Vector3.Distance(rPos, currentWaypoint.pos) < 2.5f) {
-							//if(Mathf.Abs(deltaHeading) <= 1.2f) {
+							//if(Mathf.Abs(deltaHeading) <= headingThreshold) {
 								reached = true;
 							//}
 						}
@@ -448,7 +450,7 @@ public class DebugRover : MonoBehaviour
 					
 					
 					
-					if(Mathf.Abs(deltaHeading) > 1.2f) {
+					if(Mathf.Abs(deltaHeading) > headingThreshold) {
 						
 						if(heading < targetHeading) {
 							turnInput = 1;
@@ -572,14 +574,14 @@ public class DebugRover : MonoBehaviour
 		
 		foreach(RotateWheel w in wheelRot) {
 			WheelFrictionCurve ff = w.col.forwardFriction;
-			ff.stiffness = w.initialStiffness[0] * currentFriction;
+			ff.stiffness = w.initialStiffness[0] * currentFriction * frictionMultiplier;
 			if(stuck) {
 				ff.stiffness = 0;
 			}
 			w.col.forwardFriction = ff;
 			
 			WheelFrictionCurve sf = w.col.sidewaysFriction;
-			sf.stiffness = w.initialStiffness[1] * currentFriction;
+			sf.stiffness = w.initialStiffness[1] * currentFriction * frictionMultiplier;
 			if(stuck) {
 				sf.stiffness = 0;
 			}

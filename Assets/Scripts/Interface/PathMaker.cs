@@ -80,6 +80,7 @@ public class PathMaker : MonoBehaviour
 	public FollowerRover basketRover;
 	private float hSpawnTime = 0f;
 	public GameObject currentRobot;
+	public RobotConfig robotConfig;
 	
 	public bool VR;
 	
@@ -265,11 +266,13 @@ public class PathMaker : MonoBehaviour
 			PlaceDown(PathMaker.Instance.currentRobot.GetComponent<HumanoidRobot>());
 		}
 		
+	/*
 	if(cropCategory == 0) {
         	selectedCrop = cropList[selectedCropId];
 	}
 	if(cropCategory == 1) {
 		selectedCrop = vggtCropList[selectedCropId];
 	}
+	*/
     }
 }

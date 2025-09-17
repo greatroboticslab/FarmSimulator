@@ -30,6 +30,7 @@ public class PlotHelper : MonoBehaviour
 	public void PlacePlot() {
 		
 		GameObject newPlot = Instantiate(plantZone);
+		Debug.Log(plant);
 		newPlot.GetComponent<PlantZone>().plant = plant;
 		if(plant.GetComponent<Plant>().moldVulnerable) {
 			newPlot.GetComponent<PlantZone>().actionType = 0;

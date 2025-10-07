@@ -18,6 +18,7 @@ public class RobotArm : MonoBehaviour
 	public float minDist = 0.03f;
 	public float minSpeed = 0.25f;
 	public float maxSpeed = 1.0f;
+	public float timeHarvesting = 0f;
 	
 	public bool harvesting;
 	
@@ -48,6 +49,16 @@ public class RobotArm : MonoBehaviour
 		harvesting = true;
 		currentCrop = p;
 		currentFruit = 0;
+	}
+
+	public void SkipFruit() {
+		currentFruit += 1;
+		timeHarvesting = 0;
+		if(currentFruit >= currentCrop.fruits.Count) {
+			harvesting = false;
+			
+			//currentFruit = 0;
+		}
 	}
 	
     // Start is called before the first frame update
@@ -102,6 +113,8 @@ public class RobotArm : MonoBehaviour
     {
 		
 		if(harvesting) {
+
+			timeHarvesting += Time.deltaTime;
 			
 			if(cutTime >= 1.0f) {
 				cutting = false;
@@ -110,6 +123,7 @@ public class RobotArm : MonoBehaviour
 				if(currentFruit >= currentCrop.fruits.Count) {
 					harvesting = false;
 				}
+				timeHarvesting = 0;
 			}
 			
 			for(int i = 0; i < joints.Count; i++) {
@@ -175,12 +189,14 @@ public class RobotArm : MonoBehaviour
         for(int i = 0; i < joints.Count; i++) {
 			if(joints[i].input != 0) {
 				
+				//Rotator
 				if(joints[i].type == 0) {
 				
 					joints[i].obj.transform.Rotate(joints[i].axis * joints[i].input * joints[i].maxDelta * Time.deltaTime, Space.Self);
 					
 				}
 				
+				//Slider
 				if(joints[i].type == 1) {
 					
 					joints[i].obj.transform.localPosition += (joints[i].axis * joints[i].input * joints[i].maxDelta * Time.deltaTime);
@@ -193,6 +209,7 @@ public class RobotArm : MonoBehaviour
 					
 				}
 				
+				//Gripper
 				if(joints[i].type == 2) {
 					
 					joints[i].curVal += joints[i].input * joints[i].maxDelta * Time.deltaTime;
@@ -207,6 +224,7 @@ public class RobotArm : MonoBehaviour
 					
 				}
 				
+				//Cutter
 				if(joints[i].type == 3) {
 					
 					joints[i].curVal += joints[i].input * joints[i].maxDelta * Time.deltaTime;

@@ -11,6 +11,7 @@ public class FollowerRover : MonoBehaviour
 	public WheelCollider rightDrive;
 	
 	public Transform dropZone;
+	public float payloadWeight;
 	
 	public float parkDistance = 0.5f;
 	public float repositionDistance = 0.7f;
@@ -30,6 +31,12 @@ public class FollowerRover : MonoBehaviour
 	public void Flip() {
 		
 		transform.rotation = Quaternion.identity;
+		
+	}
+
+	public void AddFruit(FruitBody f) {
+		
+		payloadWeight += f.weight;
 		
 	}
 	

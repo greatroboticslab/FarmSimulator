@@ -45,7 +45,11 @@ After a few seconds, the terrain will load, and your robot will be placed in the
 
 If you press the Plant Crops button, the camera angle will change, and you will enter planting mode. You can use the WASD/arrow keys to move the camera. A new menu will also pop up with different crops. Row and column density determine how many crops are planted per row and column, these must be above zero or no crops will be planted. Weed density controls how many weeds are present in the plot.
 
+![planting2](Media/farmsim1.gif "Planting Mode")
+
 Once you have your desired settings, click and drag on the map. It will create a square plot, and you can place multiple plots. Once you are finished, you can press enter, and the crops will be planted.
+
+![planting3](Media/farmsim2.gif "Planting Mode")
 
 ![harvesting](Media/4.png "Harvesting")
 

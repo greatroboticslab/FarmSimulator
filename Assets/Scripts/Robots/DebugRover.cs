@@ -58,7 +58,9 @@ public class DebugRover : MonoBehaviour
 	public float closeSpeed = 0.3f;
 	public float cruiseSpeed = 5f;
 	public float headingThreshold = 1.2f; //If less than this value, rover is assumed to be facing the correct direction.
+	public float harvestTimeLimit = 10f; //Max amount of time the rover will spend attempting to harvest a single fruit before skipping it.
 	
+
 	private float maxLightTime = 5f;
 	private float lightTime;
 	
@@ -90,6 +92,7 @@ public class DebugRover : MonoBehaviour
 	public Transform probe;
 	public float measuredWater;
 	public float timeSinceMeasure;
+	public Basket basket;
 	
 	//Used for using unity as a "display," where the physical gps will update the virtual rover's position, rotation, etc
 	public void Sync(float _longitude, float _latitude, float _heading) {
@@ -367,6 +370,9 @@ public class DebugRover : MonoBehaviour
 			if(robotArm != null) {
 				if(robotArm.harvesting) {
 					_stop = true;
+					if(robotArm.timeHarvesting > harvestTimeLimit) {
+						robotArm.SkipFruit();
+					}
 				}
 			}
 			

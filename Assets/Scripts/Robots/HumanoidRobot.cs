@@ -41,6 +41,7 @@ public class HumanoidRobot : MonoBehaviour
 	private float prevGrad = 9999f;
 	private float maxRot = 0.02f;
 	private float graspSpeed = 0.7f;
+	private float desiredGrip = 1.0f;
 	private bool reachedFruit;
 	private bool readyToHarvest;
 	public float maxTimePerFruit = 15f;
@@ -751,24 +752,25 @@ public class HumanoidRobot : MonoBehaviour
 		
 	}
 	
-	public void CloseHand(bool left) {
+	//Grasp is a multiplier for the angles.
+	public void CloseHand(bool left, float grasp) {
 		
 		if(left) {
 			
 		}
 		else {
 			
-			joints[6].gameObject.transform.localRotation = Quaternion.Slerp(joints[6].gameObject.transform.localRotation, Quaternion.Euler(0, 0, 20), Time.deltaTime * graspSpeed);
+			joints[6].gameObject.transform.localRotation = Quaternion.Slerp(joints[6].gameObject.transform.localRotation, Quaternion.Euler(0, 0, 20*grasp), Time.deltaTime * graspSpeed);
 			
 			joints[7].gameObject.transform.localRotation = Quaternion.Slerp(joints[7].gameObject.transform.localRotation, Quaternion.Euler(0, 0, 0), Time.deltaTime * graspSpeed);
-			joints[8].gameObject.transform.localRotation = Quaternion.Slerp(joints[8].gameObject.transform.localRotation, Quaternion.Euler(0, 0, -65), Time.deltaTime * graspSpeed);
+			joints[8].gameObject.transform.localRotation = Quaternion.Slerp(joints[8].gameObject.transform.localRotation, Quaternion.Euler(0, 0, -65*grasp), Time.deltaTime * graspSpeed);
 			
 			
 			joints[9].gameObject.transform.localRotation = Quaternion.Slerp(joints[9].gameObject.transform.localRotation, Quaternion.Euler(0, 0, -15), Time.deltaTime * graspSpeed);
-			joints[10].gameObject.transform.localRotation = Quaternion.Slerp(joints[10].gameObject.transform.localRotation, Quaternion.Euler(0, 0, 15), Time.deltaTime * graspSpeed);
+			joints[10].gameObject.transform.localRotation = Quaternion.Slerp(joints[10].gameObject.transform.localRotation, Quaternion.Euler(0, 0, 15*grasp*grasp), Time.deltaTime * graspSpeed);
 			
 			joints[11].gameObject.transform.localRotation = Quaternion.Slerp(joints[11].gameObject.transform.localRotation, Quaternion.Euler(0, 0, 0), Time.deltaTime * graspSpeed);
-			joints[12].gameObject.transform.localRotation = Quaternion.Slerp(joints[12].gameObject.transform.localRotation, Quaternion.Euler(0, 0, -65), Time.deltaTime * graspSpeed);
+			joints[12].gameObject.transform.localRotation = Quaternion.Slerp(joints[12].gameObject.transform.localRotation, Quaternion.Euler(0, 0, -65*grasp), Time.deltaTime * graspSpeed);
 			
 			//joints[10].gameObject.transform.localRotation = Quaternion.Euler(0, 0, 20);
 			
@@ -782,6 +784,10 @@ public class HumanoidRobot : MonoBehaviour
 		harvesting = true;
 		currentCrop = p;
 		currentFruit = 0;
+		desiredGrip = 1.0f;
+		if(currentCrop.fruits[currentFruit].GetComponent<FruitBody>().weight < 0.4f) {
+			desiredGrip = 2.0f;
+		}
 		transform.position = new Vector3(transform.position.x,  + transform.position.y - (standHeight - kneelHeight), transform.position.z);
 		transform.Rotate(kneelAngle);
 		prevGrad = 999f;
@@ -901,11 +907,11 @@ public class HumanoidRobot : MonoBehaviour
 			if(HarvestDistance() < 0.015f) {
 				
 				reachedFruit = true;
-				CloseHand(false);
+				CloseHand(false, desiredGrip);
 				
 			}
 			else if(reachedFruit) {
-				CloseHand(false);
+				CloseHand(false, desiredGrip);
 			}
 			else {
 				
@@ -950,9 +956,16 @@ public class HumanoidRobot : MonoBehaviour
 			if(timeOnFruit > maxTimePerFruit) {
 				
 				currentFruit += 1;
+				
 				if(currentFruit >= currentCrop.fruits.Count) {
 					harvesting = false;
 					transform.rotation = Quaternion.identity;
+				}
+				else {
+					desiredGrip = 1.0f;
+					if(currentCrop.fruits[currentFruit].GetComponent<FruitBody>().weight < 0.4f) {
+						desiredGrip = 2.0f;
+					}
 				}
 				timeOnFruit = 0;
 				

@@ -11,6 +11,7 @@ public class PosDisplay : MonoBehaviour
 	private Text t;
 	public Text recText;
 	public Text powText;
+	public Text wgtText;
 	public Text moistureText;
 	
 	public GameObject lightIcon;
@@ -82,6 +83,9 @@ public class PosDisplay : MonoBehaviour
 			moistureText.text = "Moisture: " + rover.measuredWater.ToString("0.00") + "%";
 			moistureText.color = new Color(1,0,0,1-(rover.timeSinceMeasure/10));
 			
+			wgtText.gameObject.SetActive(true);
+			wgtText.text = "Basket Load: " + rover.basket.weight + "kg";
+
 			if(rover.recording) {
 				recText.text = "*REC";
 			}
@@ -106,6 +110,12 @@ public class PosDisplay : MonoBehaviour
 			
 			
 			
+		}
+		else {
+			if(PathMaker.Instance.basketRover) {
+				wgtText.gameObject.SetActive(true);
+				wgtText.text = "Basket Load: " + PathMaker.Instance.basketRover.payloadWeight + "kg";
+			}
 		}
     }
 

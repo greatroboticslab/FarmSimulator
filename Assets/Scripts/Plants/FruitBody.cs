@@ -34,7 +34,17 @@ public class FruitBody : MonoBehaviour
 	void OnTriggerEnter(Collider collider)
     {
 		if(collider.gameObject.tag == "basketZone" && !rb.isKinematic) {
-			collider.gameObject.transform.parent.gameObject.GetComponent<Basket>().AddFruit(this);
+			
+			FollowerRover f = collider.gameObject.transform.parent.gameObject.GetComponent<FollowerRover>();
+			if(f) {
+				f.AddFruit(this);
+			}
+			else {
+				Basket b = collider.gameObject.transform.parent.parent.gameObject.GetComponent<Basket>();
+				if(b) {
+					b.AddFruit(this);
+				}
+			}
 			Destroy(gameObject);
 		}
 		if(collider.gameObject.tag == "dropZone") {

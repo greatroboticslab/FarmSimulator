@@ -68,7 +68,7 @@ public class CropMenu : MonoBehaviour
 
 		cam.targetTexture = rt;
 
-		GameObject temp = Instantiate(prefab, new Vector3(500,500,500), Quaternion.identity);
+		GameObject temp = Instantiate(prefab, new Vector3(500,-500,500), Quaternion.identity);
 		cam.transform.position = temp.transform.position + new Vector3(0, 2, -3);
 		cam.transform.LookAt(temp.transform.position + new Vector3(0,1,0));
 

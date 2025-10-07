@@ -1,29 +1,17 @@
 # Farming Simulator
 
-### When first opening, make sure you open the correct scene by double clicking on Assets/Scenes/SampleScene.unity
+# Overview 
 
-## Developer's Guide
+The purpose the farming simulator is to simulate the robotics in farming. It involves both the general mobile robots and the humanoid to perform various farming tasks. The tasks will include the 
+weed removal, irrigation, and harvesting. We have been working very hard impleementing the related farming tasks using robotics platforms. This app is a unity app. It involevs the use of unity
+versuon "2022.3.8f1" to run the app. Other version might work, but we will need to more comprehensive tests.
 
-### Scripting
-Scripts are stored in Assets/Scripts. Some important scripts are:
+With this simulator, you are allowed to plant multiple crops and perform related farming actions with them. We are working hard to update the app to support building varirity of things on the farm such as machines and buildings. 
 
- - Interface/PathMaker.cs: Using PathMaker.Instance serves as a singleton, and stores data and variables to be accessed from any script. It also stores and generates waypoints for robots to move to.
- - Interface/SelectMenu.cs: Generates the list of robot selectables in the main menu. The prefabs of robots are referenced by a list of RobotInfo objects, which are separated by type.
- - Robots/HumanoidRobot.cs: Defines the main behavior for the humanoid robot.
- - Training/MLHumanoidController.cs: Implemented in a separate GameObject attached to the humanoid robot, this class is used for training the humanoid robot to walk. This is optional if you are manually controlling the humanoid, or using kinematic self-driving for the humanoid.
-### Training
-
-Inside the repo is a folder called ml-agents-release_22, which is a repackaged re-upload of Unity's ML-Agents repo. By navigating to this folder, you can run the command:
-
-    mlagents-learn humanoidconfig.yaml --run-id=run_name
-
-To run the trainer, which will save the results in results/run_name.
-
-![playground](Media/training.png "Playground")
-
-Then, run the game, and select the Humanoid (Training) option, and start it. The humanoid will automatically connect, and begin training. Fitness is defined in the Director script, and currently is set to try to train for walking forwards.
 
 # User's Guide
+
+Please read carefully while you run the simulator. When first opening, make sure you open the correct scene by double clicking on Assets/Scenes/SampleScene.unity
 
 ![main menu](Media/1.png "Main Menu")
 
@@ -70,3 +58,26 @@ Animations are stored as .fbx file in the Animations asset folder. You can eithe
 Once you have finished importing and setting the animation to be humanoid, you can then navigate to the Robots folder, and double click on walkcontroller.controller, and it will open up the animator window. You can drag and drop imported animations (for .fbx files, make sure to click the side arrow to expand the file to see the animation clips stored within) into the animator window, and create transitions from there.
 
 ![anim_controller](Media/anim2.png "Opening the animation controller")
+
+
+## Developer's Guide
+
+### Scripting
+Scripts are stored in Assets/Scripts. Some important scripts are:
+
+ - Interface/PathMaker.cs: Using PathMaker.Instance serves as a singleton, and stores data and variables to be accessed from any script. It also stores and generates waypoints for robots to move to.
+ - Interface/SelectMenu.cs: Generates the list of robot selectables in the main menu. The prefabs of robots are referenced by a list of RobotInfo objects, which are separated by type.
+ - Robots/HumanoidRobot.cs: Defines the main behavior for the humanoid robot.
+ - Training/MLHumanoidController.cs: Implemented in a separate GameObject attached to the humanoid robot, this class is used for training the humanoid robot to walk. This is optional if you are manually controlling the humanoid, or using kinematic self-driving for the humanoid.
+### Training
+
+Inside the repo is a folder called ml-agents-release_22, which is a repackaged re-upload of Unity's ML-Agents repo. By navigating to this folder, you can run the command:
+
+    mlagents-learn humanoidconfig.yaml --run-id=run_name
+
+To run the trainer, which will save the results in results/run_name.
+
+![playground](Media/training.png "Playground")
+
+Then, run the game, and select the Humanoid (Training) option, and start it. The humanoid will automatically connect, and begin training. Fitness is defined in the Director script, and currently is set to try to train for walking forwards.
+

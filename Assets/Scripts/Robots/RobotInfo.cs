@@ -16,6 +16,7 @@ public class RobotInfo : MonoBehaviour
 	public bool humanoid;
 	public bool training;
 	public bool includeTractor;
+	public bool animMode; // Use generic task animation window
 	public float initialSize = 1f;
 
     // Start is called before the first frame update

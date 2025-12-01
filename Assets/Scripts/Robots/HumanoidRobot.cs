@@ -1371,7 +1371,9 @@ public class HumanoidRobot : MonoBehaviour
 		float stuckFactor = 0;
 		
 		//Debug.Log(mapInfo.tractionZone.GetTraction(transform.position));
-		currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
+		if(mapInfo) {
+			currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
+		}
 		//Debug.Log(mapInfo.tractionZone.tractionGrid[0,0]);
 		
 		float rayDistance = 2.3f;

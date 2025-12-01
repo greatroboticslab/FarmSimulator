@@ -73,6 +73,28 @@ To run the trainer, which will save the results in results/run_name.
 
 Then, run the game, and select the Humanoid (Training) option, and start it. The humanoid will automatically connect, and begin training. Fitness is defined in the Director script, and currently is set to try to train for walking forwards.
 
+## Robot Behavior
+
+### Rovers
+
+As of now, all wheeled rover robots use the **DebugRover** script, located in Assets/Scripts/Robots/.
+This script dictates the behavior of these rovers, and most of the driving logic is in the SelfDriveUpdate_2 function.
+
+#### UV / Weed-Killing Rovers
+
+![uvcart](Media/uvcart.png "The UV lamp rover.")
+![uvcart](Media/lasercart.png "The laser lamp rover.")
+
+There are 2 rovers designed to kill weeds. The **UV lamp rover** and the **laser rover**.
+
+#### Robot Arm Rovers
+
+![grabberrover](Media/armrover1.png "Grabbing robot.")
+![cutterrover](Media/armrover2.png "Cutting robot.")
+![cutterroverlarge](Media/armrover3.png "Large cutting robot.")
+
+There are 3 rovers with an attached robot arm on them. The first has an arm designed to grab crops and place
+them in its basket. The other two are designed to cut off fruits from the crop plants, 
 
 ## Animations
 
@@ -83,4 +105,5 @@ Animations are stored as .fbx file in the Animations asset folder. You can eithe
 Once you have finished importing and setting the animation to be humanoid, you can then navigate to the Robots folder, and double click on walkcontroller.controller, and it will open up the animator window. You can drag and drop imported animations (for .fbx files, make sure to click the side arrow to expand the file to see the animation clips stored within) into the animator window, and create transitions from there.
 
 ![anim_controller](Media/anim2.png "Opening the animation controller")
+
 

@@ -46,7 +46,7 @@ public class PlotHelper : MonoBehaviour
 		newPlot.GetComponent<PlantZone>().weedDensity = weedDensity;
 		newPlot.transform.position = transform.position;
 		newPlot.transform.localScale = new Vector3(size.x,20,size.y);
-		PathMaker.Instance.roverControls.plantMenu.SetActive(false);
+		//PathMaker.Instance.roverControls.plantMenu.SetActive(false);
 		if(PathMaker.Instance.humanoid) {
 			PathMaker.Instance.humanoidRobot.wantsToTeleport = true;
 		}

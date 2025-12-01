@@ -94,7 +94,10 @@ public class CoordSelector : MonoBehaviour
 		
 		PathMaker.Instance.mainCam.GetComponent<MainCam>().mode = 3;
 		PathMaker.Instance.mainCam.GetComponent<MainCam>().currentFocusPoint = Vector3.zero;
-		PathMaker.Instance.mainCam.GetComponent<MainCam>().camPos = new Vector3(3,5,0);
+		//PathMaker.Instance.mainCam.GetComponent<MainCam>().camPos = new Vector3(3,5,0);
+		PathMaker.Instance.mainCam.GetComponent<MainCam>().camPos = PathMaker.Instance.selectMenuCameraPos.position;
+		PathMaker.Instance.mainCam.GetComponent<MainCam>().currentFocusPoint= PathMaker.Instance.selectMenuCameraFocus.position;
+
 		if(PathMaker.Instance.selectMenu.circle) {
 			PathMaker.Instance.mainCam.GetComponent<MainCam>().camPos = new Vector3(4,2,0);
 		}
@@ -119,6 +122,10 @@ public class CoordSelector : MonoBehaviour
 		
 		gameObject.SetActive(false);
 		ContextMenu.SetActive(true);
+
+		
+
+
 	}
 	
 	void DropdownValueChanged(Dropdown d)

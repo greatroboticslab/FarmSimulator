@@ -83,8 +83,10 @@ public class PosDisplay : MonoBehaviour
 			moistureText.text = "Moisture: " + rover.measuredWater.ToString("0.00") + "%";
 			moistureText.color = new Color(1,0,0,1-(rover.timeSinceMeasure/10));
 			
-			wgtText.gameObject.SetActive(true);
-			wgtText.text = "Basket Load: " + rover.basket.weight + "kg";
+			if(rover.basket) {
+				wgtText.gameObject.SetActive(true);
+				wgtText.text = "Basket Load: " + rover.basket.weight + "kg";
+			}
 
 			if(rover.recording) {
 				recText.text = "*REC";
@@ -119,7 +121,7 @@ public class PosDisplay : MonoBehaviour
 		}
     }
 
-void CropButtonPressed() {
+public void CropButtonPressed() {
 
 	cropSelect.SetActive(!cropSelect.activeInHierarchy);
 

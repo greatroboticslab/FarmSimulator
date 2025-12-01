@@ -77,6 +77,8 @@ public class RobotArm : MonoBehaviour
 	//Idea: Get gradients and do gradient descent on all of the moveable joints to get the desiredSpot as close to the fruit as possible.
 	//A form of inverse kinematics?
 	float GetGradient(int i) {
+
+
 		float output = 0f;
 		
 		if(currentCrop.fruits[currentFruit] != null) {

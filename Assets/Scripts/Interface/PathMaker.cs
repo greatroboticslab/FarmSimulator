@@ -16,17 +16,25 @@ public class PathMaker : MonoBehaviour
 	};
 	
 	public static PathMaker Instance;
+	public AnimationLoader animationLoader;
 	public Actor actor;
 	public Actor trainingActor;
 	public DebugRover rover;
 	public RoverControls roverControls;
+	public GameObject roverControlsANIM;
 	public bool training;
 	public bool useTerrain;
+	public bool animationMode; //Use the generic tasks animation player mode
+	public bool singlePlace; //Place a single object/crop instead of plots
+	public GameObject placeMarker; //Blue placement marker used for placing objects
 	public Director director;
 	public GameObject selectMenuObj;
 	public List<GameObject> tractionSpots;
 	public Material ghostMaterial; //Material used for showing the guide/outline for placing items on the map
 	
+	public Transform selectMenuCameraPos;
+	public Transform selectMenuCameraFocus;
+
 	public string currentLocationName;
 	
 	[System.Serializable]
@@ -121,6 +129,12 @@ public class PathMaker : MonoBehaviour
 		
 		return le;
 	}
+
+	public void FlipRobot() {
+		if(rover) {
+			rover.Flip();
+		}
+	}
 	
 	public void PlaceDown(HumanoidRobot hr) {
 		
@@ -164,7 +178,9 @@ public class PathMaker : MonoBehaviour
 					hr.joints[j].gameObject.transform.position += new Vector3(rayPos.x, hit.point.y + 1.4f, rayPos.z);
 					hr.joints[j].rb.velocity = Vector3.zero;
 					hr.joints[j].rb.angularVelocity = Vector3.zero;
-					hr.joints[j].rb.isKinematic = false;
+					if(hr.training) {
+						hr.joints[j].rb.isKinematic = false;
+					}
 				}
 				*/
 				return;
@@ -222,6 +238,13 @@ public class PathMaker : MonoBehaviour
 		actor.anim.SetFloat("turning",0);
 		
 		
+	}
+
+	public void TogglePlaceMenu() {
+
+		posDisplay.CropButtonPressed();
+		manip.placingPlot = !manip.placingPlot;
+
 	}
 	
 	public void LoadSubscene(string n) {

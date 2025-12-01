@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 
 public class Manip : MonoBehaviour
@@ -69,37 +70,13 @@ public class Manip : MonoBehaviour
 		
 	}
 	
-	public bool MouseInPlotPanel() {
+	public bool MouseInPanel() {
 		
-		Vector3 mousePos = Input.mousePosition;
-		RectTransform cropSelectPanel = PathMaker.Instance.posDisplay.cropSelectRect;
-		//Debug.Log(cropPanel.sizeDelta);
-		
-		if(mousePos.x >= Screen.width - cropPanel.rect.width && mousePos.y <= cropPanel.rect.height) {
-			//Debug.Log("INPANEL");
-			return true;
-		}
-
-		Vector3[] worldCorners = new Vector3[4];
-		cropSelectPanel.GetWorldCorners(worldCorners);
-
-		float width  = Vector3.Distance(worldCorners[0], worldCorners[3]); // left to right
-		float height = Vector3.Distance(worldCorners[0], worldCorners[1]); // bottom to top
-		Vector2 globalSize = new Vector2(width, height);
-
-		Debug.Log("Mpos: " + mousePos + ", Pos: " + cropSelectPanel.position + ", w: " + width);
-
-		if(mousePos.x >= cropSelectPanel.position.x - (width/2) && mousePos.x <= (cropSelectPanel.position.x - (width/2)) + globalSize.x) {
-			if(mousePos.y >= cropSelectPanel.position.y - (height/2) && mousePos.y <= (cropSelectPanel.position.y - (height/2)) + globalSize.y) {
-				return true;
-			}
-		}
-		
-		return false;
+		return EventSystem.current.IsPointerOverGameObject();
 	}
-	
-	public void EndEditMode() {
-		
+
+	//Place down plants in plots without exiting edit mode.
+	public void PlacePlots() {
 		Debug.Log("PLACING PLOTS");
 		foreach(GameObject plot in plotHelpers) {
 			plot.GetComponent<PlotHelper>().weedDensity = PathMaker.Instance.weedDensity;
@@ -111,6 +88,11 @@ public class Manip : MonoBehaviour
 			plotHelpers.RemoveAt(0);
 			Destroy(p);
 		}
+	}
+	
+	public void EndEditMode() {
+		
+		PlacePlots();
 
 		placingPlot = false;
 		placingTraction = false;
@@ -153,7 +135,17 @@ public class Manip : MonoBehaviour
 	}
     
     public void StartRobot(RobotInfo robotInfo) {
-		
+
+		if(robotInfo.animMode) {
+			PathMaker.Instance.animationMode = true;
+			PathMaker.Instance.singlePlace = true;
+		}
+
+		if(PathMaker.Instance.animationMode) {
+			PathMaker.Instance.roverControls.gameObject.SetActive(false);
+			PathMaker.Instance.roverControlsANIM.SetActive(true);
+		}
+
 		cam.mode = 1;
 		Cursor.lockState = CursorLockMode.None;
     	cam.chaseCam = robotInfo.chaseCam;
@@ -223,6 +215,13 @@ public class Manip : MonoBehaviour
 		PathMaker.Instance.placeCamOrg.transform.position = curRobot.transform.position + new Vector3(0,20,0);
     }
 
+	public void UpdatePlaceMarker(Vector3 pos) {
+
+		PathMaker.Instance.placeMarker.SetActive(true);
+		PathMaker.Instance.placeMarker.transform.position = pos;
+
+	}
+
     // Update is called once per frame
     void Update()
     {
@@ -255,7 +254,7 @@ public class Manip : MonoBehaviour
 						
 						if(Input.GetMouseButtonDown(0)) {
 							
-							if(!MouseInPlotPanel()) {
+							if(!MouseInPanel()) {
 								
 								GameObject newTractionSpot = Instantiate(PathMaker.Instance.tractionSpots[PathMaker.Instance.roverControls.tractionDropdown.value]);
 								newTractionSpot.transform.position = hit.point;
@@ -290,26 +289,41 @@ public class Manip : MonoBehaviour
 			//weedDensityDisplay.GetComponent<TMP_Text>().text = "Weed Density: " + weedDensity;
 			
 			RaycastHit hit;
+			Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
+			if (Physics.Raycast (ray, out hit, 4000f)) {
+				UpdatePlaceMarker(hit.point);
+			}
 			
 			if(Input.GetMouseButtonDown(0)) {
 				
-				if(!MouseInPlotPanel()) {
-				
-					validPlot = false;
-					
-					Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
-					if (Physics.Raycast (ray, out hit, 4000f)) {
-						
-						plotTopLeft = new Vector2(hit.point.x, hit.point.z);
-						plotHelper = Instantiate(plotHelperPrefab);
-						plotHelper.GetComponent<PlotHelper>().plant = PathMaker.Instance.selectedCrop;
-						plotHelpers.Add(plotHelper);
-						//placeTL = true;
-						placeBR = true;
-						
-						
-						validPlot = true;
+				if(PathMaker.Instance.singlePlace) {
+					if(!MouseInPanel()) {
+						GameObject newTractionSpot = Instantiate(PathMaker.Instance.selectedCrop);
+						newTractionSpot.transform.position = hit.point;
 					}
+				}
+
+				else {
+
+					if(!MouseInPanel()) {
+					
+						validPlot = false;
+						
+						//Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
+						//if (Physics.Raycast (ray, out hit, 4000f)) {
+							
+							plotTopLeft = new Vector2(hit.point.x, hit.point.z);
+							plotHelper = Instantiate(plotHelperPrefab);
+							plotHelper.GetComponent<PlotHelper>().plant = PathMaker.Instance.selectedCrop;
+							plotHelpers.Add(plotHelper);
+							//placeTL = true;
+							placeBR = true;
+							
+							
+							validPlot = true;
+						//}
+					}
+
 				}
 				
 				
@@ -318,12 +332,15 @@ public class Manip : MonoBehaviour
 				
 				placeTL = false;
 				placeBR = false;
+
+			 	//Place plants as soon as mouse is let go
+				PlacePlots();
 				
 			}
 			
 			if(placeBR && validPlot) {
 				
-				Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
+				//Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
 				if (Physics.Raycast (ray, out hit, 4000f)) {
 					//Debug.Log (hit.transform.name);
 					//Debug.Log ("hit");
@@ -346,7 +363,9 @@ public class Manip : MonoBehaviour
 			}
 			
 		}
-		
+		else {
+			PathMaker.Instance.placeMarker.SetActive(false);
+		}
 		
 		
         

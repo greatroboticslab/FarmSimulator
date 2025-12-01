@@ -52,9 +52,11 @@ public class RoverControls : MonoBehaviour
 			PathMaker.Instance.rover.scienceQA = scienceQA.isOn;
 		}
 		
-		if(PathMaker.Instance.humanoidRobot != null) {
+		if(PathMaker.Instance.humanoidRobot) {
 			frictionDisplay.text = "Friction: " + PathMaker.Instance.humanoidRobot.currentFriction;
-			PathMaker.Instance.humanoidRobot.selfDriving = selfDriving.isOn;
+			if(selfDriving) {			
+				PathMaker.Instance.humanoidRobot.selfDriving = selfDriving.isOn;
+			}
 		}
 		
 		if(timeSinceRecordingStarted >= 5) {
@@ -71,6 +73,11 @@ public class RoverControls : MonoBehaviour
 	}
 	
 	private void TogglePlanting() {
+
+		if(tractionMenu.activeSelf) {
+			ToggleTraction();
+		}
+
 		if(plantMenu.activeSelf) {
 			plantMenu.SetActive(false);
 			PathMaker.Instance.manip.placingPlot = false;
@@ -85,6 +92,10 @@ public class RoverControls : MonoBehaviour
 	}
 	
 	private void ToggleTraction() {
+
+		if(plantMenu.activeSelf) {
+			TogglePlanting();
+		}
 		
 		if(tractionMenu.activeSelf) {
 			tractionMenu.SetActive(false);

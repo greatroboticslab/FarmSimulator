@@ -93,7 +93,39 @@ public class DebugRover : MonoBehaviour
 	public float measuredWater;
 	public float timeSinceMeasure;
 	public Basket basket;
+	public Transform flipPoint;
+	private float timeSinceFlip;
 	
+	public void Flip() {
+		
+		timeSinceFlip = 0;
+		//transform.rotation = Quaternion.identity;
+		rb.rotation = Quaternion.identity;
+		rb.velocity = Vector3.zero;
+		rb.angularVelocity = Vector3.zero;
+		rb.position += new Vector3(0,1,0);
+		
+	}
+
+	public void FlipCheck() {
+		
+		if(!flipPoint) {
+			GameObject nF = new GameObject("FlipPoint");
+			flipPoint = nF.transform;
+			flipPoint.SetParent(transform);
+			flipPoint.localPosition = new Vector3(0,2,0);
+		}
+
+		if(flipPoint.position.y < transform.position.y && timeSinceFlip > 5) {
+			
+			Flip();
+			
+		}
+		timeSinceFlip += Time.deltaTime;
+
+		
+	}
+
 	//Used for using unity as a "display," where the physical gps will update the virtual rover's position, rotation, etc
 	public void Sync(float _longitude, float _latitude, float _heading) {
 		
@@ -406,6 +438,11 @@ public class DebugRover : MonoBehaviour
 					if(currentWaypoint.light) {
 						lightOn = true;
 					}
+
+					//UV robot
+					//if(robotType == 1 && !currentWaypoint.pickFruit) {
+					//	lightOn = true;
+					//}
 					
 					var localVelocity = transform.InverseTransformDirection(rb.velocity);
 						
@@ -601,6 +638,7 @@ public class DebugRover : MonoBehaviour
     void Update()
     {
 		
+		FlipCheck();
 		TractionUpdate();
 		
 		

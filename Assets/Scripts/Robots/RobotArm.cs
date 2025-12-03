@@ -13,6 +13,7 @@ public class RobotArm : MonoBehaviour
 	public int currentFruit;
 	public List<float> gradients;
 	public Transform desiredSpot;
+	public Transform preAlignSpot; // Align with this spot first to avoid coming in from the side
 	public float samplingDistance = 0.3f;
 	public float lr = 7f;
 	public float minDist = 0.03f;

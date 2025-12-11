@@ -295,35 +295,38 @@ public class Manip : MonoBehaviour
 			}
 			
 			if(Input.GetMouseButtonDown(0)) {
-				
-				if(PathMaker.Instance.singlePlace) {
-					if(!MouseInPanel()) {
-						GameObject newTractionSpot = Instantiate(PathMaker.Instance.selectedCrop);
-						newTractionSpot.transform.position = hit.point;
-					}
-				}
 
-				else {
+				if(PathMaker.Instance.selectedCrop) {
 
-					if(!MouseInPanel()) {
-					
-						validPlot = false;
-						
-						//Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
-						//if (Physics.Raycast (ray, out hit, 4000f)) {
-							
-							plotTopLeft = new Vector2(hit.point.x, hit.point.z);
-							plotHelper = Instantiate(plotHelperPrefab);
-							plotHelper.GetComponent<PlotHelper>().plant = PathMaker.Instance.selectedCrop;
-							plotHelpers.Add(plotHelper);
-							//placeTL = true;
-							placeBR = true;
-							
-							
-							validPlot = true;
-						//}
-					}
+                    if(PathMaker.Instance.singlePlace) {
+                        if(!MouseInPanel()) {
+                            GameObject newTractionSpot = Instantiate(PathMaker.Instance.selectedCrop);
+                            newTractionSpot.transform.position = hit.point;
+                        }
+                    }
 
+                    else {
+
+                        if(!MouseInPanel()) {
+
+                            validPlot = false;
+
+                            //Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
+                            //if (Physics.Raycast (ray, out hit, 4000f)) {
+
+                                plotTopLeft = new Vector2(hit.point.x, hit.point.z);
+                                plotHelper = Instantiate(plotHelperPrefab);
+                                plotHelper.GetComponent<PlotHelper>().plant = PathMaker.Instance.selectedCrop;
+                                plotHelpers.Add(plotHelper);
+                                //placeTL = true;
+                                placeBR = true;
+
+
+                                validPlot = true;
+                            //}
+                        }
+
+                    }
 				}
 				
 				

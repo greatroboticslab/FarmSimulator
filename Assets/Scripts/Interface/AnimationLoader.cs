@@ -136,6 +136,7 @@ public class AnimationLoader : MonoBehaviour
 	public void ToggleAnimationWindow() {
 		
 		animationWindow.SetActive(!animationWindow.activeInHierarchy);
+		PathMaker.Instance.manip.smallCamScreen.SetActive(!animationWindow.activeInHierarchy);
 
 	}
 

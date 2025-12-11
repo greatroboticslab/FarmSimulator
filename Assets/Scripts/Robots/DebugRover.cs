@@ -31,6 +31,7 @@ public class DebugRover : MonoBehaviour
 	public PathMaker.Waypoint currentWaypoint;   //attribute of pathmaker attribute named current waypoint 
 	public Vector2 currentWaypointLATLNG; // vector of current lat/lang
 	public GameObject camOrg; //?
+	public GameObject camOrgCenter; // Center point that camOrg orbits around
 	public bool wantsToTeleport;
 	public RobotArm robotArm;
 	public int selectedJoint = -1;
@@ -58,7 +59,7 @@ public class DebugRover : MonoBehaviour
 	public float closeSpeed = 0.3f;
 	public float cruiseSpeed = 5f;
 	public float headingThreshold = 1.2f; //If less than this value, rover is assumed to be facing the correct direction.
-	public float harvestTimeLimit = 10f; //Max amount of time the rover will spend attempting to harvest a single fruit before skipping it.
+	public float harvestTimeLimit = 20f; //Max amount of time the rover will spend attempting to harvest a single fruit before skipping it.
 	
 
 	private float maxLightTime = 5f;
@@ -652,19 +653,56 @@ public class DebugRover : MonoBehaviour
 		
 		controls.Gameplay.leftTrigger.performed += ctx => lTrigger = ctx.ReadValue<float>();
 		controls.Gameplay.leftTrigger.canceled += ctx => lTrigger = 0f;
-		
+
+
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if(scroll > 0) {
+            camOrgCenter.transform.localScale *= 0.9f;
+        }
+        if(scroll < 0) {
+            camOrgCenter.transform.localScale *= 1.1f;
+        }
+
+
+		if(Input.GetMouseButton(1)) {
+            float _mx = Input.GetAxis("Mouse X");
+            float _my = Input.GetAxis("Mouse Y");
+            camOrgCenter.transform.Rotate(-_my, 0f, 0f);
+            camOrgCenter.transform.Rotate(Vector3.up * _mx, Space.World);
+		}
+
+
 		if(wantsToTeleport) {
 			
 			if(PathMaker.Instance.waypoints.Count > 0) {
 			
 				wantsToTeleport = false;
 				//Debug.Log("TELEPORTING...");
-				
+
+
+
 				rb.isKinematic = true;
+				Vector2 mDir = PathMaker.Instance.waypoints[0].pos - PathMaker.Instance.waypoints[1].pos;
 				Vector2 tPos = PathMaker.Instance.waypoints[0].pos;
-				transform.position = new Vector3(tPos.x + 5.0f, transform.position.y + 10.0f, tPos.y);
+				tPos += mDir;
+
+				Vector3 startPos = new Vector3(tPos.x, transform.position.y + 20.0f, tPos.y);
+
+				if(robotType == 1) {
+				    startPos += new Vector3(4,0,4);
+				}
+
+				RaycastHit hit;
+
+                if (Physics.Raycast(startPos, Vector3.down, out hit, 150.0f))
+                {
+                    Debug.Log("Hit!!!: " + hit.collider.name);
+                }
+                Vector3 endPos = hit.point + new Vector3(0,1,0);
+
+				transform.position = endPos;
 				rb.isKinematic = false;
-				rb.MovePosition(new Vector3(tPos.x + 5.0f, transform.position.y + 10.0f, tPos.y));
+				rb.MovePosition(endPos);
 				
 			}
 		}

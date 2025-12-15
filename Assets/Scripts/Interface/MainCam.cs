@@ -18,6 +18,9 @@ public class MainCam : MonoBehaviour
     public GameObject focusedRobot;
 	public RobotInfo robotSelection;
 	public Vector3 currentFocusPoint;
+
+	public Transform chaseCamOrigin;
+	public Transform chaseCamOrbit;
 	
 	public Transform camTransform;
 	public Transform leftHandTransform;
@@ -165,12 +168,41 @@ public class MainCam : MonoBehaviour
         	if(chaseCam) {
         		if(focusedRobot != null) {
 					
-					
-					if(PathMaker.Instance.humanoid) {
-						targetPos = focusedRobot.transform.position + new Vector3(5,2,5);
+					if(chaseCamOrigin) {
+
+                        float scroll = Input.GetAxis("Mouse ScrollWheel");
+                        if(scroll > 0) {
+                            chaseCamOrigin.transform.localScale *= 0.9f;
+                        }
+                        if(scroll < 0) {
+                            chaseCamOrigin.transform.localScale *= 1.1f;
+                        }
+
+                        if(Input.GetMouseButton(1)) {
+                            float _mx = Input.GetAxis("Mouse X");
+                            float _my = Input.GetAxis("Mouse Y");
+                            //chaseCamOrigin.transform.Rotate(-_my, 0f, 0f);
+                            chaseCamOrigin.transform.Rotate(Vector3.up * _mx, Space.World);
+                            chaseCamOrbit.transform.position += new Vector3(0,-_my*0.05f,0);
+                        }
+
+					    if(PathMaker.Instance.humanoid) {
+                            chaseCamOrigin.transform.position = focusedRobot.transform.position;
+                        }
+                        else {
+                            chaseCamOrigin.transform.position = focusedRobot.transform.position;
+                        }
+
+					    targetPos = chaseCamOrbit.transform.position;
 					}
 					else {
-						targetPos = focusedRobot.GetComponent<DebugRover>().camOrg.transform.position;
+
+                        if(PathMaker.Instance.humanoid) {
+                            targetPos = focusedRobot.transform.position + new Vector3(5,2,5);
+                        }
+                        else {
+                            targetPos = focusedRobot.GetComponent<DebugRover>().camOrg.transform.position;
+                        }
 					}
         		}
 				

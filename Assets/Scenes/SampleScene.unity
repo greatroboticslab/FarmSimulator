@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 705507994}
-  m_IndirectSpecularColor: {r: 0.18029113, g: 0.22572404, b: 0.30693027, a: 1}
+  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -13678,6 +13678,8 @@ MonoBehaviour:
   focusedRobot: {fileID: 0}
   robotSelection: {fileID: 0}
   currentFocusPoint: {x: 0, y: 0, z: 0}
+  chaseCamOrigin: {fileID: 0}
+  chaseCamOrbit: {fileID: 0}
   camTransform: {fileID: 456476076}
   leftHandTransform: {fileID: 197340742}
   walkSpeed: 5
@@ -16273,6 +16275,8 @@ MonoBehaviour:
   focusedRobot: {fileID: 0}
   robotSelection: {fileID: 0}
   currentFocusPoint: {x: 0, y: 0, z: 0}
+  chaseCamOrigin: {fileID: 416278528}
+  chaseCamOrbit: {fileID: 1311135764}
   camTransform: {fileID: 963194228}
   leftHandTransform: {fileID: 0}
   walkSpeed: 5
@@ -24799,7 +24803,7 @@ MonoBehaviour:
   - name: Farm in the City
     prefab: {fileID: 2334573158658295277, guid: c141e59979d2d8c4cb765618f94815e8, type: 3}
   loaded: 0
-  waypointPrefab: {fileID: 5432547211601663003, guid: b9ce1e0cea98c474ebf334982193f939, type: 3}
+  waypointPrefab: {fileID: 7573675076559983010, guid: 1908f0218ff94dd2ba099aa5442b84ba, type: 3}
   currentWayPointObj: {fileID: 0}
   mapCoords: {x: 0, y: 0}
   mqttIp: 127.0.0.1

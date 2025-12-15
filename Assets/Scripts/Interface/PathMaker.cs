@@ -123,8 +123,19 @@ public class PathMaker : MonoBehaviour
 		if(currentWayPointObj != null) {
 			Destroy(currentWayPointObj);
 		}
+
+        Vector3 startPos = new Vector3(le.pos.x,120,le.pos.y);
+
+		RaycastHit hit;
+
+        if (Physics.Raycast(startPos, Vector3.down, out hit, 150.0f))
+        {
+            //Debug.Log("Hit!!!: " + hit.collider.name);
+        }
+        Vector3 endPos = hit.point;
+
 		currentWayPointObj = Instantiate(waypointPrefab);
-		currentWayPointObj.transform.position = new Vector3(le.pos.x,0,le.pos.y);
+		currentWayPointObj.transform.position = endPos;
 		waypoints.RemoveAt(least);
 		
 		return le;

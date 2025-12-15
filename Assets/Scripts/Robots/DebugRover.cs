@@ -655,21 +655,10 @@ public class DebugRover : MonoBehaviour
 		controls.Gameplay.leftTrigger.canceled += ctx => lTrigger = 0f;
 
 
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if(scroll > 0) {
-            camOrgCenter.transform.localScale *= 0.9f;
-        }
-        if(scroll < 0) {
-            camOrgCenter.transform.localScale *= 1.1f;
-        }
 
 
-		if(Input.GetMouseButton(1)) {
-            float _mx = Input.GetAxis("Mouse X");
-            float _my = Input.GetAxis("Mouse Y");
-            camOrgCenter.transform.Rotate(-_my, 0f, 0f);
-            camOrgCenter.transform.Rotate(Vector3.up * _mx, Space.World);
-		}
+
+
 
 
 		if(wantsToTeleport) {
@@ -687,6 +676,8 @@ public class DebugRover : MonoBehaviour
 				tPos += mDir;
 
 				Vector3 startPos = new Vector3(tPos.x, transform.position.y + 20.0f, tPos.y);
+
+                Debug.Log("Start Pos: " + startPos);
 
 				if(robotType == 1) {
 				    startPos += new Vector3(4,0,4);

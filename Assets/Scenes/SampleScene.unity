@@ -24826,6 +24826,7 @@ MonoBehaviour:
   - {fileID: 115763963233780189, guid: 94d729a312be920418452f9a245446e2, type: 3}
   - {fileID: 4566606448173928125, guid: 138f78683b6c51f41938b82855d3300c, type: 3}
   vggtCropList: []
+  plotHuman: {fileID: 7743742950054457444, guid: e0a89f9ec583bce41bc024a2a95dae65, type: 3}
   selectedCrop: {fileID: 0}
   selectedCropId: 0
   selectedVGGTCropId: 0

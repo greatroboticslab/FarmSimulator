@@ -75,6 +75,7 @@ public class PathMaker : MonoBehaviour
 	public List<GameObject> cropList;
 	public List<GameObject> vggtCropList;	
 
+    public GameObject plotHuman; //Prefab of a human to spawn next to a placed plot
 	public GameObject selectedCrop;
 	public int selectedCropId;
 	public int selectedVGGTCropId;

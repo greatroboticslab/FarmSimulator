@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+//Actually places the plants, weeds, and waypoints down
+
 public class PlantZone : MonoBehaviour
 {
 
@@ -40,7 +42,21 @@ public class PlantZone : MonoBehaviour
         float max_y = yDensity*z;
 		
 		int weedAmount = (int)(x*z*weedDensity);
-		
+
+
+		//Place human
+		RaycastHit h_hit;
+        Vector3 h_startPos = transform.position + new Vector3(x*1.1f,0,z*-1.1f);
+        if (Physics.Raycast(h_startPos, transform.TransformDirection(-Vector3.up), out h_hit, Mathf.Infinity))
+        {
+
+            GameObject newHuman = Instantiate(PathMaker.Instance.plotHuman);
+		    newHuman.transform.position = h_hit.point;
+
+        }
+
+
+
 		for(int w = 0; w < weedAmount; w++) {
 			
 			//newWeed.transform.position = 

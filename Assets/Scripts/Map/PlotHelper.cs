@@ -53,6 +53,9 @@ public class PlotHelper : MonoBehaviour
 		else {
 			PathMaker.Instance.rover.wantsToTeleport = true;
 		}
+
+
+
 		//Destroy(gameObject);
 	}
 }

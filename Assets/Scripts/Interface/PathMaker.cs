@@ -21,6 +21,7 @@ public class PathMaker : MonoBehaviour
 	public Actor trainingActor;
 	public DebugRover rover;
 	public RoverControls roverControls;
+	
 	public GameObject roverControlsANIM;
 	public bool training;
 	public bool useTerrain;
@@ -239,6 +240,7 @@ public class PathMaker : MonoBehaviour
 		placedDown = false;
 		hSpawnTime = 0;
 		roverControls.gameObject.SetActive(false);
+		
 		
 		actor.anim.SetInteger("gear", 0);
 		actor.anim.SetBool("changeGear", false);

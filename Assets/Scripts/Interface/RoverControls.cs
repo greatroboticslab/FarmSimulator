@@ -29,6 +29,7 @@ public class RoverControls : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+		selfDriving.isOn = false;
         plantButton.onClick.AddListener(TogglePlanting);
 		tractionButton.onClick.AddListener(ToggleTraction);
 		recordButton.onClick.AddListener(ToggleRecording);

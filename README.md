@@ -1,13 +1,12 @@
 # Farming Simulator
 
-# Overview 
+# Overview
 
-The purpose the farming simulator is to simulate the robotics in farming. It involves both the general mobile robots and the humanoid to perform various farming tasks. The tasks will include the 
+The purpose the farming simulator is to simulate the robotics in farming. It involves both the general mobile robots and the humanoid to perform various farming tasks. The tasks will include the
 weed removal, irrigation, and harvesting. We have been working very hard impleementing the related farming tasks using robotics platforms. This app is a unity app. It involevs the use of unity
 versuon "2022.3.8f1" to run the app. Other version might work, but we will need to more comprehensive tests.
 
-With this simulator, you are allowed to plant multiple crops and perform related farming actions with them. We are working hard to update the app to support building varirity of things on the farm such as machines and buildings. 
-
+With this simulator, you are allowed to plant multiple crops and perform related farming actions with them. We are working hard to update the app to support building varirity of things on the farm such as machines and buildings.
 
 # User's Guide
 
@@ -21,11 +20,12 @@ To use the game as a user, start the game. It will take you to a selection scree
 
 After a few seconds, the terrain will load, and your robot will be placed in the center. There are a few options on the right:
 
- - Self Driving: If checked, the rover or humanoid will drive itself via script to harvest or perform actions on crops. If unchecked, the user has control over the rover or humanoid. The WASD or arrow keys can be used to control movement. If the rover has an arm, the user can hold down a number key and use W or S / up arrow or down arrow to control that joint.
- - Science QA Format: If checked, any recordings made will have the inputs converted to a human-readable question and answer format, asking what the rover should do given the current frame and situation. If unchecked, the recording data is saved as raw text files with floats from 0 - 1 for the controls.
- - Plant Crops: Goes into planting mode.
- - Start Recording: Begins recording the game. Images are saved every frame, using the rover's camera. Along with each image saved, a text file is saved giving the current position, velocity, and other variables, and the current output. This is the data to be used to train via imitation learning.
- - Main Menu (Exit): Returns to the main menu.
+- Self Driving: If checked, the rover or humanoid will drive itself via script to harvest or perform actions on crops. If unchecked, the user has control over the rover or humanoid. The WASD or arrow keys can be used to control movement. If the rover has an arm, the user can hold down a number key and use W or S / up arrow or down arrow to control that joint.
+- You can also command the robot via chat box to stop or start harvesting. Make sure to have selected crops before hand
+- Science QA Format: If checked, any recordings made will have the inputs converted to a human-readable question and answer format, asking what the rover should do given the current frame and situation. If unchecked, the recording data is saved as raw text files with floats from 0 - 1 for the controls.
+- Plant Crops: Goes into planting mode.
+- Start Recording: Begins recording the game. Images are saved every frame, using the rover's camera. Along with each image saved, a text file is saved giving the current position, velocity, and other variables, and the current output. This is the data to be used to train via imitation learning.
+- Main Menu (Exit): Returns to the main men
 
 ### Planting
 
@@ -49,18 +49,17 @@ Now that the crops are planted, if you are in self-driving mode, the rover or hu
 
 You can place different spots or patches that have different traction values. For instance, grass has low traction, water has lower traction, and rovers can get stuck in dirt. To place these spots down, press the "Edit Traction" button, and select the patch type. You can then place down the objects, highlighted by a blue outline.
 
-
-
-
 ## Developer's Guide
 
 ### Scripting
+
 Scripts are stored in Assets/Scripts. Some important scripts are:
 
- - Interface/PathMaker.cs: Using PathMaker.Instance serves as a singleton, and stores data and variables to be accessed from any script. It also stores and generates waypoints for robots to move to.
- - Interface/SelectMenu.cs: Generates the list of robot selectables in the main menu. The prefabs of robots are referenced by a list of RobotInfo objects, which are separated by type.
- - Robots/HumanoidRobot.cs: Defines the main behavior for the humanoid robot.
- - Training/MLHumanoidController.cs: Implemented in a separate GameObject attached to the humanoid robot, this class is used for training the humanoid robot to walk. This is optional if you are manually controlling the humanoid, or using kinematic self-driving for the humanoid.
+- Interface/PathMaker.cs: Using PathMaker.Instance serves as a singleton, and stores data and variables to be accessed from any script. It also stores and generates waypoints for robots to move to.
+- Interface/SelectMenu.cs: Generates the list of robot selectables in the main menu. The prefabs of robots are referenced by a list of RobotInfo objects, which are separated by type.
+- Robots/HumanoidRobot.cs: Defines the main behavior for the humanoid robot.
+- Training/MLHumanoidController.cs: Implemented in a separate GameObject attached to the humanoid robot, this class is used for training the humanoid robot to walk. This is optional if you are manually controlling the humanoid, or using kinematic self-driving for the humanoid.
+
 ### Training
 
 Inside the repo is a folder called ml-agents-release_22, which is a repackaged re-upload of Unity's ML-Agents repo. By navigating to this folder, you can run the command:
@@ -94,7 +93,7 @@ There are 2 rovers designed to kill weeds. The **UV lamp rover** and the **laser
 ![cutterroverlarge](Media/armrover3.png "Large cutting robot.")
 
 There are 3 rovers with an attached robot arm on them. The first has an arm designed to grab crops and place
-them in its basket. The other two are designed to cut off fruits from the crop plants, 
+them in its basket. The other two are designed to cut off fruits from the crop plants,
 
 ## Animations
 
@@ -105,5 +104,3 @@ Animations are stored as .fbx file in the Animations asset folder. You can eithe
 Once you have finished importing and setting the animation to be humanoid, you can then navigate to the Robots folder, and double click on walkcontroller.controller, and it will open up the animator window. You can drag and drop imported animations (for .fbx files, make sure to click the side arrow to expand the file to see the animation clips stored within) into the animator window, and create transitions from there.
 
 ![anim_controller](Media/anim2.png "Opening the animation controller")
-
-

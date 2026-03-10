@@ -89,6 +89,7 @@ public class DebugRover : MonoBehaviour
 	
 	public bool blocked;
 	private float blockTime;
+	private bool _prevSelfDriving;
 	
 	public Transform probe;
 	public float measuredWater;
@@ -482,6 +483,7 @@ public class DebugRover : MonoBehaviour
 					
 					//Reached Waypoint
 					if(reached) {
+						Debug.Log("[DebugRover] Waypoint reached at " + currentWaypoint.pos + ". Getting next waypoint.");
 						if(currentWaypoint.checkWater) {
 							TestPlant();
 						}
@@ -904,7 +906,7 @@ public class DebugRover : MonoBehaviour
 	}
 	
 	public void FixedUpdate() {
-		
+
 		if(selfDriving) {
 			//SelfDriveUpdate();
 			SelfDriveUpdate_2();
@@ -912,6 +914,15 @@ public class DebugRover : MonoBehaviour
 		else {
 			ManualDriveUpdate();
 		}
+
+		if(selfDriving && !_prevSelfDriving)
+		{
+			Debug.Log("[DebugRover] Self-driving STARTED. currentWaypoint=" +
+				(currentWaypoint == null ? "null (no plot placed?)" : currentWaypoint.pos.ToString()) +
+				", loaded=" + PathMaker.Instance.loaded +
+				", waypointCount=" + PathMaker.Instance.waypoints.Count);
+		}
+		_prevSelfDriving = selfDriving;
 		
 		float leftInput = forwardInput;
 		float rightInput = forwardInput;

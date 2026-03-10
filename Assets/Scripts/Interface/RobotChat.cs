@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -15,14 +16,28 @@ public class RobotChat : MonoBehaviour
     public Button submitButton;
 
     [Header("Groq Settings")]
-    private string apiKey = "YOUR_API_KEY_KEY";
+    private string apiKey = "";
     private string apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-  private string model = "llama-3.3-70b-versatile";
+    private string model = "llama-3.3-70b-versatile";
+
+    [System.Serializable]
+    private class Config { public string groq_api_key; }
 
     void Start()
     {
-         robotResponseText.gameObject.SetActive(true);
-    yourChatText.gameObject.SetActive(true);
+        string configPath = Application.streamingAssetsPath + "/config.json";
+        if (File.Exists(configPath))
+        {
+            Config cfg = JsonUtility.FromJson<Config>(File.ReadAllText(configPath));
+            apiKey = cfg.groq_api_key;
+        }
+        else
+        {
+            Debug.LogError("RobotChat: config.json not found at " + configPath);
+        }
+
+        robotResponseText.gameObject.SetActive(true);
+        yourChatText.gameObject.SetActive(true);
         if (submitButton != null)
             submitButton.onClick.AddListener(OnSubmit);
     }
@@ -44,7 +59,30 @@ public class RobotChat : MonoBehaviour
         robotResponseText.text = "Robot: thinking...";
         chatInputField.text = "";
 
+        CheckAndExecuteCommands(userMessage);
         StartCoroutine(SendToGroq(userMessage));
+    }
+
+    private void CheckAndExecuteCommands(string userMessage)
+    {
+        string lower = userMessage.ToLower();
+        bool isFarmCommand = lower.Contains("farm") || lower.Contains("harvest") ||
+                             lower.Contains("auto") || lower.Contains("self-drive") ||
+                             lower.Contains("self drive") || lower.Contains("autonomous");
+
+        if (isFarmCommand)
+        {
+            if (PathMaker.Instance != null && PathMaker.Instance.roverControls != null)
+            {
+                PathMaker.Instance.roverControls.selfDriving.isOn = true;
+                Debug.Log("[RobotChat] selfDriving toggle set to TRUE. loaded=" + PathMaker.Instance.loaded +
+                    ", waypointCount=" + PathMaker.Instance.waypoints.Count);
+            }
+            else
+            {
+                Debug.LogWarning("[RobotChat] Farm command received but roverControls is null.");
+            }
+        }
     }
 
     private IEnumerator SendToGroq(string userMessage)
@@ -52,7 +90,7 @@ public class RobotChat : MonoBehaviour
         string jsonBody = "{" +
             "\"model\": \"" + model + "\"," +
             "\"messages\": [" +
-                "{\"role\": \"system\", \"content\": \"You are a farmer robot taking requests from a human. Do not give long responses. Be concise and practical.\"}," +
+                "{\"role\": \"system\", \"content\": \"You are a farmer robot that takes commands from a human operator. Be concise. If the user asks you to farm, harvest, auto-drive, or anything similar, confirm that you have started doing it — do not ask for clarification or more details.\"}," +
                 "{\"role\": \"user\", \"content\": \"" + EscapeJson(userMessage) + "\"}" +
             "]" +
         "}";
@@ -88,8 +126,14 @@ public class RobotChat : MonoBehaviour
         if (start == -1) return "No response found.";
 
         start += marker.Length;
-        int end = json.IndexOf("\"", start);
-        if (end == -1) return "Parse error.";
+        int end = start;
+        while (end < json.Length)
+        {
+            if (json[end] == '\\') { end += 2; continue; }  
+            if (json[end] == '"') break;
+            end++;
+        }
+        if (end >= json.Length) return "Parse error.";
 
         string result = json.Substring(start, end - start);
         result = result.Replace("\\n", "\n").Replace("\\\"", "\"").Replace("\\\\", "\\");

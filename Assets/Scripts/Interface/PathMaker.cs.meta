@@ -3,7 +3,41 @@ guid: a69490ab0564b1347a7582e3fb448209
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - animationLoader: {instanceID: 0}
+  - actor: {instanceID: 0}
+  - trainingActor: {instanceID: 0}
+  - rover: {instanceID: 0}
+  - roverControls: {instanceID: 0}
+  - roverControlsANIM: {instanceID: 0}
+  - placeMarker: {instanceID: 0}
+  - director: {instanceID: 0}
+  - selectMenuObj: {instanceID: 0}
+  - ghostMaterial: {instanceID: 0}
+  - selectMenuCameraPos: {instanceID: 0}
+  - selectMenuCameraFocus: {instanceID: 0}
+  - waypointPrefab: {instanceID: 0}
+  - currentWayPointObj: {instanceID: 0}
+  - map: {instanceID: 0}
+  - emptyTerrain: {instanceID: 0}
+  - mainCam: {instanceID: 0}
+  - placeCamOrg: {instanceID: 0}
+  - coordMenu: {instanceID: 0}
+  - posDisplay: {instanceID: 0}
+  - selectMenu: {instanceID: 0}
+  - manip: {instanceID: 0}
+  - plotControls: {instanceID: 0}
+  - plotHuman: {instanceID: 0}
+  - selectedCrop: {instanceID: 0}
+  - selectedRobot: {instanceID: 0}
+  - tractorPrefab: {instanceID: 0}
+  - basketRoverPrefab: {instanceID: 0}
+  - humanoidRobotPrefab: {fileID: 3660956843472389002, guid: 14b5f3182e2912a4dbc11c667066e324, type: 3}
+  - humanoidRobot: {instanceID: 0}
+  - tractor: {instanceID: 0}
+  - basketRover: {instanceID: 0}
+  - currentRobot: {instanceID: 0}
+  - robotConfig: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

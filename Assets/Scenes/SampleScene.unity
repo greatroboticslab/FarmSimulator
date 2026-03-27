@@ -25520,6 +25520,7 @@ MonoBehaviour:
   useTractor: 0
   tractorPrefab: {fileID: 2929594833920645244, guid: cffd98282c38b404098b1d1c03709194, type: 3}
   basketRoverPrefab: {fileID: 5709409508152755283, guid: 4ba5c7962e8592342b6ab9cbc6a43b46, type: 3}
+  humanoidRobotPrefab: {fileID: 3660956843472389002, guid: 14b5f3182e2912a4dbc11c667066e324, type: 3}
   humanoidRobot: {fileID: 0}
   tractor: {fileID: 0}
   basketRover: {fileID: 0}

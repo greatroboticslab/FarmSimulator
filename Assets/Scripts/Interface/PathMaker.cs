@@ -85,6 +85,7 @@ public class PathMaker : MonoBehaviour
 	public bool useTractor;
 	public GameObject tractorPrefab;
 	public GameObject basketRoverPrefab;
+	public GameObject humanoidRobotPrefab;
 	public HumanoidRobot humanoidRobot;
 	public Tractor tractor;
 	public FollowerRover basketRover;

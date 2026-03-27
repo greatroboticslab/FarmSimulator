@@ -74,3 +74,6 @@ crashlytics-build.properties
 # Local config with API keys (do not commit)
 Assets/StreamingAssets/config.json
 Assets/StreamingAssets/config.json.meta
+
+
+CLAUDE.md

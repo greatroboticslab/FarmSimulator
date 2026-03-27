@@ -53,6 +53,13 @@ public class PlantZone : MonoBehaviour
             GameObject newHuman = Instantiate(PathMaker.Instance.plotHuman);
 		    newHuman.transform.position = h_hit.point;
 
+			if(PathMaker.Instance.humanoidRobotPrefab != null) {
+				GameObject newHumanoidRobot = Instantiate(PathMaker.Instance.humanoidRobotPrefab);
+				newHumanoidRobot.transform.position = h_hit.point + new Vector3(1.5f, 0, 0);
+				newHumanoidRobot.GetComponent<HumanoidRobot>().actor = PathMaker.Instance.actor;
+				PathMaker.Instance.humanoidRobot = newHumanoidRobot.GetComponent<HumanoidRobot>();
+			}
+
         }
 
 

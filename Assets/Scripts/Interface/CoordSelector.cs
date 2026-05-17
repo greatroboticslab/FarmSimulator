@@ -114,6 +114,8 @@ public class CoordSelector : MonoBehaviour
 		PathMaker.Instance.mapCoords = new Vector2(_lng,_lat);
 		PathMaker.Instance.LoadSubscene(currentLocation);
 		PathMaker.Instance.mapReady = true;
+
+		FindObjectOfType<RobotChat>(true)?.ShowChat();
 		
 		PathMaker.Instance.posDisplay.gameObject.SetActive(true);
 		PathMaker.Instance.posDisplay.powText.gameObject.SetActive(true);

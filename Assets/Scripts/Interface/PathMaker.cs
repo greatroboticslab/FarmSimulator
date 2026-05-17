@@ -238,6 +238,7 @@ public class PathMaker : MonoBehaviour
 		trainingActor.gameObject.SetActive(false);
 		manip.started = false;
 		mapReady = false;
+		FindObjectOfType<RobotChat>()?.HideChat();
 		placedDown = false;
 		hSpawnTime = 0;
 		roverControls.gameObject.SetActive(false);

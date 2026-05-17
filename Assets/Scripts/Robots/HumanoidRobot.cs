@@ -21,6 +21,7 @@ public class HumanoidRobot : MonoBehaviour
 	public Tractor tractor;
 	public bool ridingTractor;
 	public bool selfDriving;
+	public bool playerControlled = true;
 	private bool boardingTractor;
 	private bool leavingTractor;
 	private float boardTime;
@@ -1502,8 +1503,10 @@ public class HumanoidRobot : MonoBehaviour
 		if(copy && !training) {
 			
 			if(!selfDriving) {
-				forward = Input.GetAxis("Vertical");
-				leftRight = Input.GetAxis("Horizontal");
+				if(playerControlled) {
+					forward = Input.GetAxis("Vertical");
+					leftRight = Input.GetAxis("Horizontal");
+				}
 			}
 			else {
 				MoveUpdate();

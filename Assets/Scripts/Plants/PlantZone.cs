@@ -56,8 +56,10 @@ public class PlantZone : MonoBehaviour
 			if(PathMaker.Instance.humanoidRobotPrefab != null) {
 				GameObject newHumanoidRobot = Instantiate(PathMaker.Instance.humanoidRobotPrefab);
 				newHumanoidRobot.transform.position = h_hit.point + new Vector3(1.5f, 0, 0);
-				newHumanoidRobot.GetComponent<HumanoidRobot>().actor = PathMaker.Instance.actor;
-				PathMaker.Instance.humanoidRobot = newHumanoidRobot.GetComponent<HumanoidRobot>();
+				HumanoidRobot spawnedHR = newHumanoidRobot.GetComponent<HumanoidRobot>();
+				spawnedHR.actor = PathMaker.Instance.actor;
+				spawnedHR.playerControlled = false;
+				PathMaker.Instance.humanoidRobot = spawnedHR;
 			}
 
         }

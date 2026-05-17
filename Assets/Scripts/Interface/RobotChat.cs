@@ -10,6 +10,7 @@ using System.Text;
 public class RobotChat : MonoBehaviour
 {
     [Header("UI References")]
+    public CanvasGroup chatGroup;
     public TMP_InputField chatInputField;
     public TMP_Text robotResponseText;
     public TMP_Text yourChatText;
@@ -22,6 +23,15 @@ public class RobotChat : MonoBehaviour
 
     [System.Serializable]
     private class Config { public string groq_api_key; }
+
+    private const string systemPrompt =
+        "You are a farmer robot controller. Classify the user's message and respond in exactly this two-line format:\n" +
+        "ACTION: <START_FARM|STOP_FARM|NOT_A_COMMAND>\n" +
+        "RESPONSE: <short message to show the user>\n\n" +
+        "Use START_FARM if the user wants the robot to start autonomous farming, harvesting, or driving. " +
+        "Use STOP_FARM if the user wants the robot to stop, pause, or turn off. " +
+        "Use NOT_A_COMMAND if the message is unrelated to robot control — in that case set RESPONSE to 'This is not a command.' " +
+        "Keep responses short and direct. Never deviate from the two-line format.";
 
     void Start()
     {
@@ -36,18 +46,29 @@ public class RobotChat : MonoBehaviour
             Debug.LogError("RobotChat: config.json not found at " + configPath);
         }
 
-        robotResponseText.gameObject.SetActive(true);
-        yourChatText.gameObject.SetActive(true);
         if (submitButton != null)
             submitButton.onClick.AddListener(OnSubmit);
+
+        robotResponseText?.gameObject.SetActive(true);
+        yourChatText?.gameObject.SetActive(true);
+        SetChatVisible(false);
+    }
+
+    public void ShowChat() => SetChatVisible(true);
+    public void HideChat() => SetChatVisible(false);
+
+    private void SetChatVisible(bool visible)
+    {
+        if (chatGroup == null) return;
+        chatGroup.alpha = visible ? 1f : 0f;
+        chatGroup.interactable = visible;
+        chatGroup.blocksRaycasts = visible;
     }
 
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-        {
             OnSubmit();
-        }
     }
 
     public void OnSubmit()
@@ -59,30 +80,7 @@ public class RobotChat : MonoBehaviour
         robotResponseText.text = "Robot: thinking...";
         chatInputField.text = "";
 
-        CheckAndExecuteCommands(userMessage);
         StartCoroutine(SendToGroq(userMessage));
-    }
-
-    private void CheckAndExecuteCommands(string userMessage)
-    {
-        string lower = userMessage.ToLower();
-        bool isFarmCommand = lower.Contains("farm") || lower.Contains("harvest") ||
-                             lower.Contains("auto") || lower.Contains("self-drive") ||
-                             lower.Contains("self drive") || lower.Contains("autonomous");
-
-        if (isFarmCommand)
-        {
-            if (PathMaker.Instance != null && PathMaker.Instance.roverControls != null)
-            {
-                PathMaker.Instance.roverControls.selfDriving.isOn = true;
-                Debug.Log("[RobotChat] selfDriving toggle set to TRUE. loaded=" + PathMaker.Instance.loaded +
-                    ", waypointCount=" + PathMaker.Instance.waypoints.Count);
-            }
-            else
-            {
-                Debug.LogWarning("[RobotChat] Farm command received but roverControls is null.");
-            }
-        }
     }
 
     private IEnumerator SendToGroq(string userMessage)
@@ -90,7 +88,7 @@ public class RobotChat : MonoBehaviour
         string jsonBody = "{" +
             "\"model\": \"" + model + "\"," +
             "\"messages\": [" +
-                "{\"role\": \"system\", \"content\": \"You are a farmer robot that takes commands from a human operator. Be concise. If the user asks you to farm, harvest, auto-drive, or anything similar, confirm that you have started doing it — do not ask for clarification or more details.\"}," +
+                "{\"role\": \"system\", \"content\": \"" + EscapeJson(systemPrompt) + "\"}," +
                 "{\"role\": \"user\", \"content\": \"" + EscapeJson(userMessage) + "\"}" +
             "]" +
         "}";
@@ -107,16 +105,60 @@ public class RobotChat : MonoBehaviour
 
         if (request.result == UnityWebRequest.Result.Success)
         {
-            string response = request.downloadHandler.text;
-            string extracted = ExtractTextFromResponse(response);
-            robotResponseText.text = "Robot: " + extracted;
-            Debug.Log("Groq Response: " + extracted);
+            string raw = ExtractTextFromResponse(request.downloadHandler.text);
+            string action = ParseAction(raw);
+            string display = ParseResponse(raw);
+
+            if (action == "START_FARM")
+            {
+                if (PathMaker.Instance != null && PathMaker.Instance.roverControls != null)
+                {
+                    PathMaker.Instance.roverControls.selfDriving.isOn = true;
+                    Debug.Log("[RobotChat] selfDriving set ON");
+                }
+            }
+            else if (action == "STOP_FARM")
+            {
+                if (PathMaker.Instance != null && PathMaker.Instance.roverControls != null)
+                {
+                    PathMaker.Instance.roverControls.selfDriving.isOn = false;
+                    Debug.Log("[RobotChat] selfDriving set OFF");
+                }
+            }
+
+            robotResponseText.text = "Robot: " + display;
         }
         else
         {
             robotResponseText.text = "Robot: Error - " + request.error;
             Debug.LogError("Groq Error: " + request.error + "\n" + request.downloadHandler.text);
         }
+    }
+
+    private static string ParseAction(string llmText)
+    {
+        foreach (string line in llmText.Split('\n'))
+        {
+            string trimmed = line.Trim();
+            if (trimmed.StartsWith("ACTION:"))
+            {
+                string value = trimmed["ACTION:".Length..].Trim();
+                if (value == "START_FARM" || value == "STOP_FARM" || value == "NOT_A_COMMAND")
+                    return value;
+            }
+        }
+        return "NOT_A_COMMAND";
+    }
+
+    private static string ParseResponse(string llmText)
+    {
+        foreach (string line in llmText.Split('\n'))
+        {
+            string trimmed = line.Trim();
+            if (trimmed.StartsWith("RESPONSE:"))
+                return trimmed["RESPONSE:".Length..].Trim();
+        }
+        return llmText.Trim();
     }
 
     private string ExtractTextFromResponse(string json)
@@ -129,7 +171,7 @@ public class RobotChat : MonoBehaviour
         int end = start;
         while (end < json.Length)
         {
-            if (json[end] == '\\') { end += 2; continue; }  
+            if (json[end] == '\\') { end += 2; continue; }
             if (json[end] == '"') break;
             end++;
         }

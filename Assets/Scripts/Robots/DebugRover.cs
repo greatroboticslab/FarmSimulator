@@ -538,34 +538,53 @@ public class DebugRover : MonoBehaviour
 		
 	}
 	
+	private int placeAttempts = 0;
+
 	private void PlaceDown()
 	{
-		float initialHeight = 250f; // Start height for the raycast
-		float stepHeight = 10f; // Step height for each progressive raycast
-		int maxSteps = 50; // Maximum number of steps to attempt
-		Vector3 rayPos = new Vector3(512, initialHeight, 512);
-		RaycastHit hit;
-
-		for (int i = 0; i < maxSteps; i++)
+		//Prefer the map's designated spawn point; fall back to wherever the rover is now
+		Vector3 target = transform.position;
+		if (mapInfo != null && mapInfo.spawn != null)
 		{
-			// Check if the raycast hits the terrain
-			if (Physics.Raycast(rayPos, Vector3.down*stepHeight, out hit))
-			{
-				// Place the rover slightly above the hit point
-				//transform.position = new Vector3(rayPos.x, hit.point.y + 1.4f, rayPos.z);
-				rb.MovePosition(new Vector3(rayPos.x, hit.point.y + 1.4f, rayPos.z));
-				// Ensure the Rigidbody is properly settled
-				rb.velocity = Vector3.zero;
-				rb.angularVelocity = Vector3.zero;
-				return;
-			}
-			// Decrease the raycast height for the next step
-			rayPos.y -= stepHeight;
+			target = mapInfo.spawn.position;
 		}
 
-    // If no hit is found after the maximum steps, log an error
-    Debug.LogError("Failed to place the rover on the terrain.");
-}
+		if (FindGroundHeight(target, transform, out float groundY))
+		{
+			transform.position = new Vector3(target.x, groundY + 1.4f, target.z);
+			rb.position = transform.position;
+			rb.velocity = Vector3.zero;
+			rb.angularVelocity = Vector3.zero;
+			return;
+		}
+
+		//The farm terrain may still be loading; retry next frame instead of giving up
+		if (placeAttempts < 300)
+		{
+			placeAttempts++;
+			placed = false;
+			return;
+		}
+		Debug.LogWarning("DebugRover: no ground found under spawn point " + target + "; leaving rover at " + transform.position);
+	}
+
+	//Casts down from high above (x,z) and returns the highest hit that is not part of ignoreRoot
+	public static bool FindGroundHeight(Vector3 target, Transform ignoreRoot, out float groundY)
+	{
+		groundY = target.y;
+		RaycastHit[] hits = Physics.RaycastAll(new Vector3(target.x, 1000f, target.z), Vector3.down, 2000f, ~0, QueryTriggerInteraction.Ignore);
+		bool found = false;
+		foreach (RaycastHit h in hits)
+		{
+			if (ignoreRoot != null && h.collider.transform.IsChildOf(ignoreRoot)) continue;
+			if (!found || h.point.y > groundY)
+			{
+				groundY = h.point.y;
+				found = true;
+			}
+		}
+		return found;
+	}
 	private float timeSpawned = 0;
 	private bool placed = false;
 	

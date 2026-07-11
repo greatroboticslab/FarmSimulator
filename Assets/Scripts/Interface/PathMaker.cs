@@ -159,58 +159,42 @@ public class PathMaker : MonoBehaviour
 	}
 	
 	public void PlaceDown(HumanoidRobot hr) {
-		
-		float initialHeight = 350f; // Start height for the raycast
-		float stepHeight = 10f; // Step height for each progressive raycast
-		int maxSteps = 50; // Maximum number of steps to attempt
-		Vector3 rayPos = new Vector3(512, initialHeight, 512);
-		RaycastHit hit;
 
-		for (int i = 0; i < maxSteps; i++)
-		{
-			// Check if the raycast hits the terrain
-			if (Physics.Raycast(rayPos, Vector3.down, out hit, stepHeight))
-			{
-				hr.transform.position = new Vector3(rayPos.x, hit.point.y + 1.4f, rayPos.z);
-				//hr.GetComponent<Rigidbody>().isKinematic = false;
-				
-				//Spawn with a tractor
-				if(useTractor) {
-					if(tractor == null) {
-						GameObject newTractor = Instantiate(tractorPrefab);
-						tractor = newTractor.GetComponent<Tractor>();
-						hr.tractor = tractor;
-					}
-					tractor.transform.position = new Vector3(rayPos.x + 3, hit.point.y + 2.4f, rayPos.z + 3);
-				}
-				//Spawn without a tractor, use a basket rover instead
-				else {
-					if(basketRover == null) {
-						GameObject newBask = Instantiate(basketRoverPrefab);
-						basketRover = newBask.GetComponent<FollowerRover>();
-					}
-					basketRover.leader = hr.gameObject;
-					basketRover.transform.position = new Vector3(rayPos.x + 3, hit.point.y + 1.2f, rayPos.z + 3);
-					hr.basketRover = basketRover;
-				}
-				
-				/*
-				for(int j = 0; j < hr.joints.Length; j++) {
-					hr.joints[j].rb.isKinematic = true;
-					hr.joints[j].gameObject.transform.position += new Vector3(rayPos.x, hit.point.y + 1.4f, rayPos.z);
-					hr.joints[j].rb.velocity = Vector3.zero;
-					hr.joints[j].rb.angularVelocity = Vector3.zero;
-					if(hr.training) {
-						hr.joints[j].rb.isKinematic = false;
-					}
-				}
-				*/
-				return;
-			}
-			// Decrease the raycast height for the next step
-			rayPos.y -= stepHeight;
+		if(hr == null) return;
+
+		//Prefer the map's designated spawn point; fall back to the robot's current spot
+		MapInfo info = GetActiveMapInfo();
+		Vector3 target = hr.transform.position;
+		if(info != null && info.spawn != null) {
+			target = info.spawn.position;
 		}
-		
+
+		if(!DebugRover.FindGroundHeight(target, hr.transform, out float groundY)) {
+			Debug.LogWarning("PathMaker: no ground found under spawn point " + target + " for humanoid.");
+			return;
+		}
+
+		hr.transform.position = new Vector3(target.x, groundY + 1.4f, target.z);
+
+		//Spawn with a tractor
+		if(useTractor) {
+			if(tractor == null) {
+				GameObject newTractor = Instantiate(tractorPrefab);
+				tractor = newTractor.GetComponent<Tractor>();
+				hr.tractor = tractor;
+			}
+			tractor.transform.position = new Vector3(target.x + 3, groundY + 2.4f, target.z + 3);
+		}
+		//Spawn without a tractor, use a basket rover instead
+		else {
+			if(basketRover == null) {
+				GameObject newBask = Instantiate(basketRoverPrefab);
+				basketRover = newBask.GetComponent<FollowerRover>();
+			}
+			basketRover.leader = hr.gameObject;
+			basketRover.transform.position = new Vector3(target.x + 3, groundY + 1.2f, target.z + 3);
+			hr.basketRover = basketRover;
+		}
 	}
 	
 	public void GoToMainMenu() {

@@ -98,12 +98,21 @@ public static class UIRaycastDebug
 		else Debug.Log("PointerNow: no current input module");
 	}
 
-	[MenuItem("Tools/Spawn Click Probe")]
-	public static void SpawnClickProbe()
+	[MenuItem("Tools/Report Rover State")]
+	public static void RoverState()
 	{
-		if (Object.FindObjectOfType<ClickProbe>() != null) { Debug.Log("ClickProbe already present."); return; }
-		new GameObject("ClickProbe").AddComponent<ClickProbe>();
-		Debug.Log("ClickProbe spawned.");
+		PathMaker pm = Object.FindObjectOfType<PathMaker>();
+		if (pm == null || pm.rover == null) { Debug.Log("RoverState: no PathMaker/rover."); return; }
+
+		DebugRover rover = pm.rover;
+		Vector3 p = rover.transform.position;
+		string spawnInfo = "no mapInfo/spawn";
+		if (rover.mapInfo != null && rover.mapInfo.spawn != null) spawnInfo = "spawn at " + rover.mapInfo.spawn.position;
+
+		bool grounded = Physics.Raycast(p + Vector3.up * 0.5f, Vector3.down, out RaycastHit hit, 5f, ~0, QueryTriggerInteraction.Ignore);
+		Debug.Log("RoverState: pos=" + p + " vel=" + rover.GetComponent<Rigidbody>().velocity.magnitude.ToString("0.00")
+			+ " groundBelow=" + (grounded ? hit.collider.name + " dist " + hit.distance.ToString("0.00") : "NONE within 5m")
+			+ " | " + spawnInfo);
 	}
 
 	[MenuItem("Tools/Simulate Chat Submit")]

@@ -115,7 +115,8 @@ public class MainCam : MonoBehaviour
             if (Physics.Raycast(ray, out hit, 100))
             {
                 
-				RobotInfo ri = hit.collider.gameObject.GetComponent<RobotInfo>();
+				//colliders often live on child parts; resolve up to the robot root
+				RobotInfo ri = hit.collider.gameObject.GetComponentInParent<RobotInfo>();
 				if(ri != null) {
 					ri.hovering = true;
 					

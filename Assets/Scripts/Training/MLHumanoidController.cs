@@ -25,13 +25,21 @@ public class MLHumanoidController : Agent
 	}
 	
 	public override void CollectObservations(VectorSensor sensor) {
-		
-		foreach(float f in h.GetInputs()) {
+
+		//camera pixels do not belong in the fixed-size vector sensor
+		foreach(float f in h.GetInputs(false)) {
 			sensor.AddObservation(f);
 		}
-		
+
 	}
 	
+	//Zero-torque heuristic so running without a trainer idles quietly instead
+	//of logging a warning every step
+	public override void Heuristic(in ActionBuffers actionsOut) {
+		var continuous = actionsOut.ContinuousActions;
+		for(int i = 0; i < continuous.Length; i++) continuous[i] = 0f;
+	}
+
 	public override void OnActionReceived(ActionBuffers actions) {
 		//Debug.Log(actions.ContinuousActions[0]);
 		for(int i = 0; i < h.joints.Length*3; i+=3) {

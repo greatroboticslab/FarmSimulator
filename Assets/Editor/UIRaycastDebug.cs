@@ -113,6 +113,14 @@ public static class UIRaycastDebug
 		Debug.Log("RoverState: pos=" + p + " vel=" + rover.GetComponent<Rigidbody>().velocity.magnitude.ToString("0.00")
 			+ " groundBelow=" + (grounded ? hit.collider.name + " dist " + hit.distance.ToString("0.00") : "NONE within 5m")
 			+ " | " + spawnInfo);
+
+		DebugRover[] all = Object.FindObjectsOfType<DebugRover>();
+		Debug.Log("RoverState: " + all.Length + " DebugRover instances (pm.rover id " + rover.GetInstanceID() + "):");
+		foreach (DebugRover r in all)
+		{
+			Debug.Log("  " + GetPath(r.gameObject) + " id=" + r.GetInstanceID() + " pos=" + r.transform.position
+				+ " enabled=" + r.isActiveAndEnabled + " mapInfo=" + (r.mapInfo != null));
+		}
 	}
 
 	[MenuItem("Tools/Debug Terrain Details")]

@@ -607,13 +607,15 @@ public class HumanoidRobot : MonoBehaviour
 	
 	private Texture2D inputTexture;
 
-	public float[] GetInputs() {
+	public float[] GetInputs(bool includeCamera = true) {
 		List<float> lInputs = new List<float>();
-		
+
 		//Time
 		lInputs.Add(curTime);
-		
-		//Camera
+
+		//Camera (skipped for ML-Agents vector observations; camera data belongs
+		//in a CameraSensor, not the fixed-size vector sensor)
+		if(includeCamera && mainCamera != null && mainCamera.targetTexture != null) {
 		int camWidth = mainCamera.targetTexture.width;
 		int camHeight = mainCamera.targetTexture.height;
 		RenderTexture prevActive = RenderTexture.active;
@@ -629,6 +631,7 @@ public class HumanoidRobot : MonoBehaviour
 			lInputs.Add(p.r);
 			lInputs.Add(p.g);
 			lInputs.Add(p.b);
+		}
 		}
 		
 		//Velocity

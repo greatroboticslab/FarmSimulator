@@ -546,24 +546,40 @@ public class DebugRover : MonoBehaviour
 
 	private void PlaceDown()
 	{
-		//Prefer the map's designated spawn point; fall back to wherever the rover is now
-		Vector3 target = transform.position;
-		if (mapInfo != null && mapInfo.spawn != null)
+		//Some robot prefabs never get mapInfo wired by Manip; pull it from the
+		//active map so every rover can find the spawn point
+		if (mapInfo == null && PathMaker.Instance != null)
 		{
-			target = mapInfo.spawn.position;
+			mapInfo = PathMaker.Instance.GetActiveMapInfo();
 		}
+
+		//Robots can be instantiated before the farm loads. Keep waiting for the
+		//map and its spawn point instead of placing at the current position.
+		if (mapInfo == null || mapInfo.spawn == null)
+		{
+			if (placeAttempts < 6000) { placeAttempts++; placed = false; }
+			return;
+		}
+
+		Vector3 target = mapInfo.spawn.position;
 
 		if (FindGroundHeight(target, transform, out float groundY))
 		{
+			Debug.Log("[DebugRover] PlaceDown " + name + ": moving from " + transform.position + " to spawn " + target + " groundY " + groundY);
+			//move the whole articulated assembly (arm joints etc.), not just the
+			//root body, or the joints drag the robot back to where it spawned
 			transform.position = new Vector3(target.x, groundY + 1.4f, target.z);
-			rb.position = transform.position;
-			rb.velocity = Vector3.zero;
-			rb.angularVelocity = Vector3.zero;
+			foreach (Rigidbody body in GetComponentsInChildren<Rigidbody>())
+			{
+				body.position = body.transform.position;
+				body.velocity = Vector3.zero;
+				body.angularVelocity = Vector3.zero;
+			}
 			return;
 		}
 
 		//The farm terrain may still be loading; retry next frame instead of giving up
-		if (placeAttempts < 300)
+		if (placeAttempts < 6000)
 		{
 			placeAttempts++;
 			placed = false;

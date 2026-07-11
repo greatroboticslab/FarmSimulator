@@ -48,6 +48,11 @@ public class PosDisplay : MonoBehaviour
         t = GetComponent<Text>();
 		if(moistureText != null) moistureText.color = new Color(1,0,0,0);
 		lastPlant = 0;
+
+		//denser default planting so plots read as real crop rows, not a sparse grid
+		if(xSlider != null) { xSlider.maxValue = Mathf.Max(xSlider.maxValue, 2.5f); xSlider.value = 1.4f; }
+		if(ySlider != null) { ySlider.maxValue = Mathf.Max(ySlider.maxValue, 2.5f); ySlider.value = 0.55f; }
+		if(weedSlider != null) { weedSlider.value = Mathf.Min(weedSlider.maxValue, 0.12f); }
     }
 
     // Update is called once per frame

@@ -19,10 +19,17 @@ public class PlantZone : MonoBehaviour
 	public bool makeWaypoints = true;
 	
 	public Transform prefabOutput;
-	
+
 	private Vector2 rOffset;
-	
+
 	private int iter;
+
+	//random yaw and scale so fields stop looking like a grid of identical clones
+	public static void ApplyNaturalVariation(GameObject plantObj) {
+		if(plantObj == null) return;
+		plantObj.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+		plantObj.transform.localScale *= Random.Range(0.8f, 1.3f);
+	}
 
     // Start is called before the first frame update
     void Start()
@@ -96,6 +103,7 @@ public class PlantZone : MonoBehaviour
 				    GameObject newWeed = Instantiate(weed);
 					newWeed.transform.parent = prefabOutput;
 				    newWeed.transform.position = hit.point;
+					ApplyNaturalVariation(newWeed);
 				}
 			    
 			}
@@ -127,6 +135,7 @@ public class PlantZone : MonoBehaviour
 						GameObject newPlant = Instantiate(plant);
 						newPlant.transform.parent = prefabOutput;
 						newPlant.transform.position = hit.point;
+					ApplyNaturalVariation(newPlant);
 					}
 				}
 			
@@ -241,6 +250,7 @@ public class PlantZone : MonoBehaviour
 						GameObject newPlant = Instantiate(plant);
 						newPlant.transform.parent = prefabOutput;
 						newPlant.transform.position = hit.point;
+					ApplyNaturalVariation(newPlant);
 						Vector2 plantPoint = new Vector2(hit.point.x, hit.point.z);
 						wp = new PathMaker.Waypoint();
 						wp.pos = plantPoint;
@@ -276,6 +286,7 @@ public class PlantZone : MonoBehaviour
 						GameObject newPlant = Instantiate(plant);
 						newPlant.transform.parent = prefabOutput;
 						newPlant.transform.position = hit.point;
+					ApplyNaturalVariation(newPlant);
 						Vector2 plantPoint = new Vector2(hit.point.x, hit.point.z);
 						wp = new PathMaker.Waypoint();
 						wp.pos = plantPoint;

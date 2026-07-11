@@ -4914,7 +4914,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -15.301086, y: -5.2475586}
+  m_AnchoredPosition: {x: -15.301025, y: -5.2475586}
   m_SizeDelta: {x: -763.8799, y: -10.49498}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &246526750
@@ -11825,7 +11825,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "\t"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -21284,7 +21284,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "\t"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -24791,6 +24791,7 @@ GameObject:
   - component: {fileID: 1392068917}
   - component: {fileID: 1392068916}
   - component: {fileID: 1392068915}
+  - component: {fileID: 1392068920}
   m_Layer: 5
   m_Name: RobotChat
   m_TagString: Untagged
@@ -24832,6 +24833,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac64e3d7a7fc18e4a886c57e2af80e6a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  chatGroup: {fileID: 1392068920}
   chatInputField: {fileID: 1392068917}
   robotResponseText: {fileID: 1247368721}
   yourChatText: {fileID: 687540717}
@@ -24987,6 +24989,18 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1392068913}
   m_CullTransparentMesh: 1
+--- !u!225 &1392068920
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1392068913}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &1395260935
 GameObject:
   m_ObjectHideFlags: 0
@@ -25506,6 +25520,8 @@ MonoBehaviour:
   mapReady: 0
   placedDown: 0
   map: {fileID: 0}
+  activeSubscene: {fileID: 0}
+  activeMapInfo: {fileID: 0}
   emptyTerrain: {fileID: 0}
   mainCam: {fileID: 963194229}
   placeCamOrg: {fileID: 167309863}
@@ -25555,6 +25571,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ip: 192.168.1.110
   started: 0
+  enableSocket: 0
   rover: {fileID: 0}
   frame: {fileID: 8400000, guid: a8f9d6d2b4d5c3266a1fb43133940fe2, type: 2}
   testFrame: {fileID: 2100000, guid: 273d71c28d1c074499c529a74bef1c15, type: 2}

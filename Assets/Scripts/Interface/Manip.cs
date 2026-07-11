@@ -364,8 +364,14 @@ public class Manip : MonoBehaviour
                             //if (Physics.Raycast (ray, out hit, 4000f)) {
 
                                 plotTopLeft = new Vector2(hit.point.x, hit.point.z);
+                                //both corners start at the click point so a plain click
+                                //makes a plot centered where you clicked instead of at origin
+                                plotBottomRight = plotTopLeft;
                                 if(plotHelperPrefab != null) {
 	                                plotHelper = Instantiate(plotHelperPrefab);
+	                                //position immediately: a same-frame click places the plot
+	                                //before the drag-update block ever runs
+	                                plotHelper.transform.position = new Vector3(plotTopLeft.x, 500f, plotTopLeft.y);
 	                                if(plotHelper.GetComponent<PlotHelper>() != null) plotHelper.GetComponent<PlotHelper>().plant = PathMaker.Instance.selectedCrop;
 	                                plotHelpers.Add(plotHelper);
                                 }

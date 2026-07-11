@@ -33,8 +33,9 @@ public class TutorialBook : MonoBehaviour
 
 		new Page("Building a Farm Plot",
 			"Press Farm Building on the right panel. The camera rises to an overhead view.\n\n" +
-			"Click and drag on the field to stake out a rectangular plot. When you release, " +
-			"crop rows are planted, weeds sprout, and path waypoints are laid for the robots.\n\n" +
+			"Click the field for a small plot, or click and drag to stake out a larger one. " +
+			"When you release, crop rows are planted, weeds sprout, and path waypoints are " +
+			"laid for the robots.\n\n" +
 			"The sliders on the right control row density, column density, and weed amount. " +
 			"The Farming Components dropdown picks what to plant.\n\n" +
 			"Press Farm Building again to return to driving."),
@@ -53,6 +54,17 @@ public class TutorialBook : MonoBehaviour
 			"Every rover carries a crop detector: it scans nearby plants, tells crops from weeds, " +
 			"and locks a visible laser onto its current target. Red beam means a normal rover; " +
 			"the UV robot lases violet."),
+
+		new Page("The Right-Side Panel",
+			"Self Driving - the robot works the planted rows on its own\n" +
+			"Science QA Format - switches robot data reporting to the lab's science Q&A format\n" +
+			"Farm Building - overhead view; drag to stake crop plots\n" +
+			"Start Recording - saves camera frames to the Recordings folder for building datasets\n" +
+			"Configure Robot - tune speeds, distances, and friction for the current robot\n" +
+			"Flip Robot - rights your robot if it rolls over\n" +
+			"Edit Traction - paint slippery or muddy zones on the field to test rough terrain\n" +
+			"Main Menu (Exit) - back to the robot select screen\n" +
+			"Tutorial - reopens this manual"),
 
 		new Page("Rovers: Cutting and UV",
 			"Cutting Robot and Cutting Robot 2 hunt weeds. Their detectors prefer weeds " +

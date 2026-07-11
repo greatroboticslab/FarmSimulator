@@ -27,6 +27,9 @@ public class PlantZone : MonoBehaviour
 	//random yaw and scale so fields stop looking like a grid of identical clones
 	public static void ApplyNaturalVariation(GameObject plantObj) {
 		if(plantObj == null) return;
+		//crop menu entries can reference inactive scene objects; clones of those
+		//spawn inactive and the whole field looks blank unless forced on
+		if(!plantObj.activeSelf) plantObj.SetActive(true);
 		plantObj.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
 		plantObj.transform.localScale *= Random.Range(0.8f, 1.3f);
 	}

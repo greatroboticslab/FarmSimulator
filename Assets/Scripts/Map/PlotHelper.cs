@@ -34,6 +34,11 @@ public class PlotHelper : MonoBehaviour
 	
 	public void PlacePlot() {
 		if(plantZone == null || plant == null || PathMaker.Instance == null) return;
+
+		//a single click (no drag) stakes a zero-area plot, which spawns a zone
+		//that plants nothing; give clicks a sensible minimum plot instead
+		size.x = Mathf.Max(size.x, 4f);
+		size.y = Mathf.Max(size.y, 4f);
 		
 		GameObject newPlot = Instantiate(plantZone);
 		PlantZone plantZoneComponent = newPlot.GetComponent<PlantZone>();

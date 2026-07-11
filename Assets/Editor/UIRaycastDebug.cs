@@ -141,6 +141,30 @@ public static class UIRaycastDebug
 			+ " density=" + t.detailObjectDensity + " qualityDensityScale=" + QualitySettings.terrainDetailDensityScale);
 	}
 
+	[MenuItem("Tools/Report Selected Crop")]
+	public static void SelectedCrop()
+	{
+		PathMaker pm = Object.FindObjectOfType<PathMaker>();
+		if (pm == null) { Debug.Log("SelectedCrop: no PathMaker."); return; }
+		string list = "";
+		if (pm.cropList != null) foreach (GameObject c in pm.cropList) list += (c != null ? c.name : "null") + ", ";
+		Debug.Log("SelectedCrop: current=" + (pm.selectedCrop != null ? pm.selectedCrop.name : "NULL")
+			+ " id=" + pm.selectedCropId + " category=" + pm.cropCategory + " | cropList: " + list);
+
+		foreach (CropSelection cs in Object.FindObjectsOfType<CropSelection>(true))
+		{
+			if (cs.items == null) continue;
+			foreach (var item in cs.items)
+			{
+				if (item == null) continue;
+				GameObject o = item.obj;
+				Debug.Log("  menu item '" + item.name + "': obj=" + (o != null ? o.name : "NULL")
+					+ (o != null ? " activeSelf=" + o.activeSelf + " isSceneObject=" + o.scene.IsValid()
+					+ " hasPlant=" + (o.GetComponent<Plant>() != null) : ""));
+			}
+		}
+	}
+
 	[MenuItem("Tools/Simulate Chat Submit")]
 	public static void SimulateSubmit()
 	{

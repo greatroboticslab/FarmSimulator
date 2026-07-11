@@ -39,13 +39,15 @@ The simulator can integrate with lab/network services, but local play should not
 
 - MQTT is off by default. Enable `MqNode.enableMqtt` on a robot only when a broker is running and configured.
 - ROS publishing is off by default. Enable `ROSRover.enableRos` only when the ROS TCP Connector setup is ready.
-- Robot chat is optional. To enable Groq chat, create `Assets/StreamingAssets/config.json` with:
+- Robot chat is optional. To enable Groq chat, get a free API key from https://console.groq.com/keys, then either set the `GROQ_API_KEY` environment variable or create `Assets/StreamingAssets/config.json` (gitignored) with:
 
 ```json
 {
   "groq_api_key": "your_key_here"
 }
 ```
+
+Never commit a real key. A key committed to a public repo gets detected and revoked automatically, which is how the chat broke before.
 
 - Online map elevation keys are optional. The old Bing elevation component on `StartMap` is disabled so local play does not fail on an expired key.
 
@@ -63,5 +65,5 @@ For training, use the existing humanoid training configuration and the in-game `
 
 - If Unity says the project is locked, close duplicate Unity processes and reopen through Unity Hub.
 - If a farm does not load, confirm its dropdown name matches `Assets/Data/locations.csv` and the matching entry in `PathMaker.subscenes`.
-- If chat says the API is not configured, that is expected unless `Assets/StreamingAssets/config.json` exists.
+- If chat says the API is not configured, that is expected unless a Groq key is provided via `Assets/StreamingAssets/config.json` or `GROQ_API_KEY`. If it says the key is invalid or revoked, generate a new key at https://console.groq.com/keys.
 - If MQTT or ROS messages are needed for lab hardware, explicitly enable the relevant component in the robot prefab and start the matching external service first.

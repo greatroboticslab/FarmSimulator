@@ -41,11 +41,18 @@ public class RobotChat : MonoBehaviour
         {
             Config cfg = JsonUtility.FromJson<Config>(File.ReadAllText(configPath));
             apiKey = cfg != null ? cfg.groq_api_key : "";
-            configured = !string.IsNullOrWhiteSpace(apiKey);
         }
-        else
+
+        //config.json wins; fall back to the GROQ_API_KEY environment variable
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
-            Debug.Log("RobotChat: optional Groq config not found at " + configPath + ". Chat commands will stay local/offline.");
+            apiKey = System.Environment.GetEnvironmentVariable("GROQ_API_KEY");
+        }
+
+        configured = !string.IsNullOrWhiteSpace(apiKey);
+        if (!configured)
+        {
+            Debug.Log("RobotChat: no Groq key in " + configPath + " or GROQ_API_KEY. Chat commands will stay local/offline.");
         }
 
         if (submitButton != null)
@@ -69,6 +76,8 @@ public class RobotChat : MonoBehaviour
 
     void Update()
     {
+        if (chatGroup != null && !chatGroup.interactable) return;
+
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             OnSubmit();
     }
@@ -140,8 +149,11 @@ public class RobotChat : MonoBehaviour
         }
         else
         {
-            robotResponseText.text = "Robot: chat service unavailable.";
-            Debug.LogWarning("Groq unavailable: " + request.error);
+            long code = request.responseCode;
+            if (code == 401) robotResponseText.text = "Robot: chat API key is invalid or revoked.";
+            else if (code == 429) robotResponseText.text = "Robot: chat rate limit reached, try again shortly.";
+            else robotResponseText.text = "Robot: chat service unavailable.";
+            Debug.LogWarning("Groq request failed (HTTP " + code + "): " + request.error + "\n" + request.downloadHandler.text);
         }
     }
 

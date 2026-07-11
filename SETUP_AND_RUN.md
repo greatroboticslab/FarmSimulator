@@ -33,6 +33,31 @@ Configured dropdown farms:
 - `Farm in the City`: loads the dedicated `Assets/Subscenes/farmInTheCity.prefab`.
 - `Hutchinson Farms`, `Freethought Farm`, and `Williamson Family Farm`: load the generic coordinate-backed `Assets/Maps/StartMap.prefab`.
 
+## Farm Terrain
+
+The original RealWorldTerrain data was never committed, so the farm
+prefabs used to load with no ground at all. The ground is now a
+generated farmland terrain (heightmap, grass/dirt/soil layers, waving
+grass details, collider) stored under `Assets/Terrain` and installed
+into the MTSU Farm and StartMap prefabs. To regenerate or tweak it,
+edit `Assets/Editor/FarmTerrainBuilder.cs` and run
+`Tools > Build Farm Terrain`. Scene lighting, fog, and the skybox are
+applied by `Tools > Polish Scene Lighting`.
+
+## Playing a Farming Loop
+
+1. Press Play, pick a robot, and press `Go to Farm`.
+2. Press `Farm Building`, then click and drag on the field to stake a
+   plot. Crops (soybeans by default), a farmhand, and path waypoints
+   spawn when you release. Press `Farm Building` again to exit.
+3. Type `start farming` into the chat box (needs a Groq key, see
+   below) or tick the `Self Driving` toggle. The rover moves to the
+   row start and works the waypoints.
+
+Robot status: all nine select-screen robots spawn on the farm spawn
+pad and respond to input. The `Humanoid Training` entry is for
+ML-Agents training and ragdolls unless a trainer is attached.
+
 ## Optional Services
 
 The simulator can integrate with lab/network services, but local play should not require them.

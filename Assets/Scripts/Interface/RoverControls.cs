@@ -44,6 +44,9 @@ public class RoverControls : MonoBehaviour
 	            TractionDropdownValueChanged(tractionDropdown);
 	        });
 		}
+
+		//Tutorial button joins the right-side panel, cloned so it matches the others
+		TutorialBook.AttachHudButton(mainMenuButton);
     }
 
     // Update is called once per frame

@@ -145,6 +145,9 @@ public class CoordSelector : MonoBehaviour
 		PathMaker.Instance.mapReady = true;
 
 		FindObjectOfType<RobotChat>(true)?.ShowChat();
+
+		//first farm visit each session opens the manual
+		TutorialBook.ShowFirstTime();
 		
 		if(PathMaker.Instance.posDisplay != null) {
 			PathMaker.Instance.posDisplay.gameObject.SetActive(true);

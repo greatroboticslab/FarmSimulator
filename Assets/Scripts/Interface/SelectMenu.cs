@@ -91,11 +91,9 @@ public class SelectMenu : MonoBehaviour
 		floor.transform.localScale = new Vector3(9f, 1f, 9f); //90x90 meters
 
 		Material mat = new Material(Shader.Find("Standard"));
-		mat.color = new Color(0.10f, 0.11f, 0.13f);
-		mat.SetFloat("_Metallic", 0.35f);
-		mat.SetFloat("_Glossiness", 0.72f);
-		mat.EnableKeyword("_EMISSION");
-		mat.SetColor("_EmissionColor", new Color(0.02f, 0.10f, 0.14f));
+		mat.color = new Color(0.13f, 0.13f, 0.14f); //dark concrete, not water
+		mat.SetFloat("_Metallic", 0.1f);
+		mat.SetFloat("_Glossiness", 0.38f);
 		mat.mainTexture = BuildGridTexture();
 		mat.mainTextureScale = new Vector2(24f, 24f);
 		floor.GetComponent<MeshRenderer>().material = mat;

@@ -11,47 +11,55 @@ public class GrassSpawner : MonoBehaviour
 	public List<GameObject> grassObjects;
 	private bool started;
 	public float renderDistance;
-	
+
+	//mesh.vertices copies the whole array on every access, so cache it once
+	private Vector3[] vertices;
+	//grass instance per vertex index; null entry means no grass spawned there
+	private GameObject[] grassPerVertex;
+
 	public void StartGrass() {
+		MeshCollider meshCollider = GetComponent<MeshCollider>();
+		if(meshCollider == null || meshCollider.sharedMesh == null || grassPrefab == null) {
+			enabled = false;
+			return;
+		}
+
 		started = true;
-		mesh = GetComponent<MeshCollider>().sharedMesh;
+		mesh = meshCollider.sharedMesh;
+		vertices = mesh.vertices;
+		grassPerVertex = new GameObject[vertices.Length];
 		grassObjects = new List<GameObject>();
 		GameObject newGrassParent = new GameObject();
+		newGrassParent.name = "Grass";
 		newGrassParent.transform.parent = transform;
 		grassParent = newGrassParent.transform;
 	}
-	
+
 	public void UpdateGrass() {
-		
-		Debug.Log("TEEEEEEEEst");
-		
-		foreach(Vector3 vPos in mesh.vertices) {
-			
-			bool exists = false;
-			GameObject existingGrass = null;
-			foreach(GameObject g in grassObjects) {
-				if(g.transform.position == vPos) {
-					exists = true;
-					existingGrass = g;
-				}
+		if(vertices == null || grassPerVertex == null || grassParent == null || Camera.main == null) return;
+
+		Vector3 camPos = Camera.main.transform.position;
+		float sqrRenderDistance = renderDistance * renderDistance;
+
+		for(int i = 0; i < vertices.Length; i++) {
+
+			//compare in world space; vertices are local to this mesh
+			Vector3 wPos = transform.TransformPoint(vertices[i]);
+			bool inRange = (wPos - camPos).sqrMagnitude <= sqrRenderDistance;
+			GameObject existingGrass = grassPerVertex[i];
+
+			if(inRange && existingGrass == null) {
+				GameObject newGrass = Instantiate(grassPrefab, wPos, Quaternion.identity, grassParent);
+				grassPerVertex[i] = newGrass;
+				grassObjects.Add(newGrass);
 			}
-			
-			
-			if(Vector3.Distance(vPos, Camera.main.transform.position) <= renderDistance) {
-				if(!exists) {
-					GameObject newGrass = Instantiate(grassPrefab);
-					newGrass.transform.parent = grassParent;
-					grassObjects.Add(newGrass);
-				}
-			}
-			if(Vector3.Distance(vPos, Camera.main.transform.position) > renderDistance) {
-				if(exists) {
-					GameObject newGrass;
-					grassObjects.Remove(existingGrass);
-				}
+			else if(!inRange && existingGrass != null) {
+				grassObjects.Remove(existingGrass);
+				grassPerVertex[i] = null;
+				Destroy(existingGrass);
 			}
 		}
-		
+
 	}
 	
     // Start is called before the first frame update

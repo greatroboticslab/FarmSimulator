@@ -14,6 +14,7 @@ public class SocketInterace : MonoBehaviour
 	
 	public string ip = "localhost";
 	public bool started;
+	public bool enableSocket;
 	public DebugRover rover;
 	public RenderTexture frame;
 	public Material testFrame;
@@ -31,17 +32,10 @@ public class SocketInterace : MonoBehaviour
     }
 	
 	public void Connect() {
+		if(!enableSocket) return;
 		
-		IPHostEntry host;
-		IPAddress ipAddress;
-		if(ip == "localhost") {
-			host = Dns.GetHostEntry(ip);
-			ipAddress = host.AddressList[1];
-		}
-		else {
-			host = Dns.GetHostEntry(ip);
-			ipAddress = host.AddressList[0];
-		}
+		IPHostEntry host = Dns.GetHostEntry(ip);
+		IPAddress ipAddress = host.AddressList.Length > 0 ? host.AddressList[0] : IPAddress.Loopback;
 		
 		IPEndPoint remoteEP = new IPEndPoint(ipAddress, 9001);
 		
@@ -50,17 +44,25 @@ public class SocketInterace : MonoBehaviour
 				
 		client.SendBufferSize = bufferSize;
 		
-		client.Connect(remoteEP);
-		Debug.Log("Socket connected to " + client.RemoteEndPoint.ToString());
-		started = true;
+		try {
+			client.Connect(remoteEP);
+			Debug.Log("Socket connected to " + client.RemoteEndPoint.ToString());
+			started = true;
+		}
+		catch(SocketException e) {
+			Debug.LogWarning("SocketInterface: optional socket connection failed: " + e.Message);
+			started = false;
+		}
 		
 	}
 	
 	private float frm = 0;
+	private Texture2D tex;
 
     // Update is called once per frame
     void Update()
     {
+		if(!enableSocket || !started || rover == null || frame == null || client == null || !client.Connected) return;
 		
 		int dataSize = bufferSize - headerSize;
 		
@@ -75,7 +77,7 @@ public class SocketInterace : MonoBehaviour
 		int imgSize = res*res*3;
 		
 		RenderTexture.active = frame;
-		Texture2D tex = new Texture2D(res, res, TextureFormat.RGB24, false);
+		if(tex == null) tex = new Texture2D(res, res, TextureFormat.RGB24, false);
 		tex.ReadPixels(new Rect(0, 0, res, res), 0, 0);
 		tex.Apply();
 		
@@ -119,37 +121,35 @@ public class SocketInterace : MonoBehaviour
 			
 			//testFrame.SetTexture("_MainTex", tex);
 			
+			//GetPixels32 returns the same bottom-left row-major order the per-pixel loop walked
+			Color32[] pixels = tex.GetPixels32();
 			byte[] imgBytes = new byte[imgSize];
 			int bPos = 0;
-			for(int y = 0; y < res; y++) {
-				for(int x = 0; x < res; x++) {
-					for(int c = 0; c < 3; c++) {
-						
-						Color val = tex.GetPixel(x, y);
-						int amt = (int)(255*val[c]);
-						//Debug.Log(val);
-						imgBytes[bPos] = (byte)amt;
-						
-						bPos++;
-					}
-				}
+			for(int i = 0; i < pixels.Length && bPos + 2 < imgBytes.Length; i++) {
+				imgBytes[bPos++] = pixels[i].r;
+				imgBytes[bPos++] = pixels[i].g;
+				imgBytes[bPos++] = pixels[i].b;
 			}
 			
 			byteSent = client.Send(imgBytes);
 			messageRecv = new byte[bufferSize];
-			client.Receive(messageRecv, 0, bufferSize, SocketFlags.None);
-			response = Encoding.UTF8.GetString(messageRecv);
+			int recvCount = client.Receive(messageRecv, 0, bufferSize, SocketFlags.None);
+			response = Encoding.UTF8.GetString(messageRecv, 0, recvCount);
 			Debug.Log("Got: " + response);
-			
+
 			string[] dats = response.Split(' ');
-			
-			float forward = float.Parse(dats[0]);
-			float turn = float.Parse(dats[1]);
-			float lightInp = float.Parse(dats[2]);
-			
-			rover.netForwardInput = forward;
-			rover.netTurnInput = turn;
-			rover.netLightInput = lightInp;
+
+			if(dats.Length >= 3 &&
+			   float.TryParse(dats[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float forward) &&
+			   float.TryParse(dats[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float turn) &&
+			   float.TryParse(dats[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float lightInp)) {
+				rover.netForwardInput = forward;
+				rover.netTurnInput = turn;
+				rover.netLightInput = lightInp;
+			}
+			else {
+				Debug.LogWarning("SocketInterface: unexpected control response, ignoring: " + response);
+			}
 			
 			
 		}

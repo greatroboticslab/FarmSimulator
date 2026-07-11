@@ -22,8 +22,8 @@ public class RobotInfo : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        sizeGoal = new Vector3(initialSize,initialSize,initialSize);
-		if(!humanoid) {
+		sizeGoal = new Vector3(initialSize,initialSize,initialSize);
+		if(!humanoid && floatingText != null && robot != null && robot.GetComponent<DebugRover>() != null) {
 			floatingText.GetComponent<TMP_Text>().text = robot.GetComponent<DebugRover>().robotName;
 		}
     }
@@ -38,8 +38,10 @@ public class RobotInfo : MonoBehaviour
         	sizeGoal = new Vector3(initialSize,initialSize,initialSize);
         }
 		
-		floatingText.transform.LookAt(PathMaker.Instance.mainCam.transform.position);
-        floatingText.transform.Rotate(0, 180, 0);
+		if(floatingText != null && PathMaker.Instance != null && PathMaker.Instance.mainCam != null) {
+			floatingText.transform.LookAt(PathMaker.Instance.mainCam.transform.position);
+	        floatingText.transform.Rotate(0, 180, 0);
+		}
         
         transform.localScale = Vector3.Lerp(transform.localScale,
         	sizeGoal, 3.5f * Time.deltaTime);

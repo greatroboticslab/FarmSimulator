@@ -42,11 +42,11 @@ public class PosDisplay : MonoBehaviour
     void Start()
     {
 
-	selectCropButton.onClick.AddListener(() => CropButtonPressed());
-	configRobotButton.onClick.AddListener(() => RobotConfigButtonPressed());
+	if(selectCropButton != null) selectCropButton.onClick.AddListener(() => CropButtonPressed());
+	if(configRobotButton != null) configRobotButton.onClick.AddListener(() => RobotConfigButtonPressed());
 
         t = GetComponent<Text>();
-		moistureText.color = new Color(1,0,0,0);
+		if(moistureText != null) moistureText.color = new Color(1,0,0,0);
 		lastPlant = 0;
     }
 
@@ -54,14 +54,16 @@ public class PosDisplay : MonoBehaviour
     void Update()
     {
 		
-		if(plotPanel.active == true) {
+		if(plotPanel != null && plotPanel.activeSelf) {
 
-			PathMaker.Instance.weedDensity = weedSlider.value;
-			PathMaker.Instance.xDensity = xSlider.value;
-			PathMaker.Instance.yDensity = ySlider.value;
-			xDensityDisplay.text = "Row Density: " + PathMaker.Instance.xDensity.ToString("0.00");
-			yDensityDisplay.text = "Column Density: " + PathMaker.Instance.yDensity.ToString("0.00");
-			weedDensityDisplay.text = "Weed Density: " + PathMaker.Instance.weedDensity.ToString("0.00");
+			if(PathMaker.Instance != null) {
+				if(weedSlider != null) PathMaker.Instance.weedDensity = weedSlider.value;
+				if(xSlider != null) PathMaker.Instance.xDensity = xSlider.value;
+				if(ySlider != null) PathMaker.Instance.yDensity = ySlider.value;
+				if(xDensityDisplay != null) xDensityDisplay.text = "Row Density: " + PathMaker.Instance.xDensity.ToString("0.00");
+				if(yDensityDisplay != null) yDensityDisplay.text = "Column Density: " + PathMaker.Instance.yDensity.ToString("0.00");
+				if(weedDensityDisplay != null) weedDensityDisplay.text = "Weed Density: " + PathMaker.Instance.weedDensity.ToString("0.00");
+			}
 			
 			//PathMaker.Instance.selectedCropId = cropSelect.value;
 			//PathMaker.Instance.selectedVGGTCropId = vggtCropSelect.value;
@@ -80,41 +82,43 @@ public class PosDisplay : MonoBehaviour
 		
 		if(rover != null) {
 			
-			moistureText.text = "Moisture: " + rover.measuredWater.ToString("0.00") + "%";
-			moistureText.color = new Color(1,0,0,1-(rover.timeSinceMeasure/10));
+			if(moistureText != null) {
+				moistureText.text = "Moisture: " + rover.measuredWater.ToString("0.00") + "%";
+				moistureText.color = new Color(1,0,0,1-(rover.timeSinceMeasure/10));
+			}
 			
-			if(rover.basket) {
+			if(rover.basket && wgtText != null) {
 				wgtText.gameObject.SetActive(true);
 				wgtText.text = "Basket Load: " + rover.basket.weight + "kg";
 			}
 
-			if(rover.recording) {
+			if(recText != null && rover.recording) {
 				recText.text = "*REC";
 			}
-			else {
+			else if(recText != null) {
 				recText.text = "";
 			}
 			
 			if(rover.lightOn) {
-				lightIcon.SetActive(true);
-				wristLightDisplay.SetActive(true);
+				if(lightIcon != null) lightIcon.SetActive(true);
+				if(wristLightDisplay != null) wristLightDisplay.SetActive(true);
 			}
 			else {
-				lightIcon.SetActive(false);
-				wristLightDisplay.SetActive(false);
+				if(lightIcon != null) lightIcon.SetActive(false);
+				if(wristLightDisplay != null) wristLightDisplay.SetActive(false);
 			}
 			
-			powText.text = "Power: " + rover.charge.ToString("0.00") + "%";
+			if(powText != null) powText.text = "Power: " + rover.charge.ToString("0.00") + "%";
 			
-        	t.text = "Lat: " + rover.latitude + "\nLng: " + rover.longitude + "\nHdg: " + rover.heading.ToString("0.00") + "\nVel: " + rover.vel.ToString("0.00");
-			wristText1.text = "Lat: " + rover.latitude + "\nLng: " + rover.longitude + "\nHdg: " + rover.heading + "\nVel: " + rover.vel;
-			wristPowerLevel.text = "Power: " + rover.charge + "%";
+			if(t != null) t.text = "Lat: " + rover.latitude + "\nLng: " + rover.longitude + "\nHdg: " + rover.heading.ToString("0.00") + "\nVel: " + rover.vel.ToString("0.00");
+			if(wristText1 != null) wristText1.text = "Lat: " + rover.latitude + "\nLng: " + rover.longitude + "\nHdg: " + rover.heading + "\nVel: " + rover.vel;
+			if(wristPowerLevel != null) wristPowerLevel.text = "Power: " + rover.charge + "%";
 			
 			
 			
 		}
 		else {
-			if(PathMaker.Instance.basketRover) {
+			if(PathMaker.Instance != null && PathMaker.Instance.basketRover && wgtText != null) {
 				wgtText.gameObject.SetActive(true);
 				wgtText.text = "Basket Load: " + PathMaker.Instance.basketRover.payloadWeight + "kg";
 			}
@@ -123,13 +127,13 @@ public class PosDisplay : MonoBehaviour
 
 public void CropButtonPressed() {
 
-	cropSelect.SetActive(!cropSelect.activeInHierarchy);
+	if(cropSelect != null) cropSelect.SetActive(!cropSelect.activeInHierarchy);
 
 }
 
 void RobotConfigButtonPressed() {
 
-	robotConfig.SetActive(!robotConfig.activeInHierarchy);
+	if(robotConfig != null) robotConfig.SetActive(!robotConfig.activeInHierarchy);
 
 }
 

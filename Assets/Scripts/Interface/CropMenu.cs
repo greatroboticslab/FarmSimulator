@@ -28,6 +28,7 @@ public class CropMenu : MonoBehaviour
 	
 
         foreach(CropCategory c in menus) {
+		if(c == null || c.menu == null || c.button == null) continue;
 
 		CropSelection m = c.menu.GetComponent<CropSelection>();
 		if(m) {
@@ -50,13 +51,15 @@ public class CropMenu : MonoBehaviour
     }
 
 	void OnMenuSelected(CropCategory c) {
+		if(c == null || c.menu == null) return;
 		for(int i = 0; i < menus.Count; i++) {
-			menus[i].menu.SetActive(false);
+			if(menus[i] != null && menus[i].menu != null) menus[i].menu.SetActive(false);
 		}
 		c.menu.SetActive(true);
 	}
 
 	public Sprite GenerateSprite(GameObject prefab) {
+		if(prefab == null) return null;
 
 		RenderTexture rt = new RenderTexture(256, 256, 24);
 
@@ -79,12 +82,12 @@ public class CropMenu : MonoBehaviour
 		tex.ReadPixels(new Rect(0, 0, 256, 256), 0, 0);
 		tex.Apply();
 
-		Object.DestroyImmediate(temp);
+		if(temp != null) Object.DestroyImmediate(temp);
 		cam.targetTexture = null;
-		Object.DestroyImmediate(camGO);
+		if(camGO != null) Object.DestroyImmediate(camGO);
 		
 		RenderTexture.active = null;
-		Destroy(rt);
+		if(rt != null) Destroy(rt);
 
 		return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
 

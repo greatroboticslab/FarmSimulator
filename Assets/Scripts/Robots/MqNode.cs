@@ -8,9 +8,11 @@ using M2MqttUnity;
 
 public class MqNode : M2MqttUnityClient
 {
+	public bool enableMqtt;
 	
 	public void PublishInfo(float forwardInput, float turnInput, bool uvLight)
 	{
+		if(!enableMqtt || client == null || !client.IsConnected) return;
 		
 		int uLight = 0;
 		if(uvLight)
@@ -22,14 +24,15 @@ public class MqNode : M2MqttUnityClient
 	}
 	
     // Start is called before the first frame update
-    void Start()
+    protected override void Start()
     {
+		if(!enableMqtt) autoConnect = false;
         base.Start();
     }
 
     // Update is called once per frame
-    void Update()
+    protected override void Update()
     {
-		
+		if(enableMqtt) base.Update();
     }
 }

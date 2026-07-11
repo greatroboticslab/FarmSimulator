@@ -27,9 +27,19 @@ public class PlantZone : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+		if(PathMaker.Instance == null || plant == null || prefabOutput == null) {
+			Debug.LogWarning("PlantZone: missing PathMaker, plant, or prefab output.");
+			enabled = false;
+			return;
+		}
 		
 		xDensity = PathMaker.Instance.xDensity;
 		yDensity = PathMaker.Instance.yDensity;
+		if(xDensity <= 0 || yDensity <= 0) {
+			Debug.LogWarning("PlantZone: row and column density must be greater than zero.");
+			enabled = false;
+			return;
+		}
 		
 		rOffset = new Vector2(0,(1f/yDensity)/2);
 		
@@ -50,16 +60,20 @@ public class PlantZone : MonoBehaviour
         if (Physics.Raycast(h_startPos, transform.TransformDirection(-Vector3.up), out h_hit, Mathf.Infinity))
         {
 
-            GameObject newHuman = Instantiate(PathMaker.Instance.plotHuman);
-		    newHuman.transform.position = h_hit.point;
+			if(PathMaker.Instance.plotHuman != null) {
+	            GameObject newHuman = Instantiate(PathMaker.Instance.plotHuman);
+			    newHuman.transform.position = h_hit.point;
+			}
 
 			if(PathMaker.Instance.humanoidRobotPrefab != null) {
 				GameObject newHumanoidRobot = Instantiate(PathMaker.Instance.humanoidRobotPrefab);
 				newHumanoidRobot.transform.position = h_hit.point + new Vector3(1.5f, 0, 0);
 				HumanoidRobot spawnedHR = newHumanoidRobot.GetComponent<HumanoidRobot>();
-				spawnedHR.actor = PathMaker.Instance.actor;
-				spawnedHR.playerControlled = false;
-				PathMaker.Instance.humanoidRobot = spawnedHR;
+				if(spawnedHR != null) {
+					spawnedHR.actor = PathMaker.Instance.actor;
+					spawnedHR.playerControlled = false;
+					PathMaker.Instance.humanoidRobot = spawnedHR;
+				}
 			}
 
         }
@@ -78,9 +92,11 @@ public class PlantZone : MonoBehaviour
 			);
 			if (Physics.Raycast(startPos, transform.TransformDirection(-Vector3.up), out hit, Mathf.Infinity))
 			{
-			    GameObject newWeed = Instantiate(weed);
-				newWeed.transform.parent = prefabOutput;
-			    newWeed.transform.position = hit.point;
+				if(weed != null) {
+				    GameObject newWeed = Instantiate(weed);
+					newWeed.transform.parent = prefabOutput;
+				    newWeed.transform.position = hit.point;
+				}
 			    
 			}
 			
@@ -94,7 +110,8 @@ public class PlantZone : MonoBehaviour
 			
 			PathMaker.Instance.loaded = true;
 			
-			if(plant.GetComponent<Plant>().moldVulnerable) {
+			Plant plantComponent = plant.GetComponent<Plant>();
+			if(plantComponent != null && plantComponent.moldVulnerable) {
 				
         	}
 			//else {
@@ -155,6 +172,7 @@ public class PlantZone : MonoBehaviour
 					wp.pos = wayPointPos2 + new Vector2((2.6f/xDensity),(1f/yDensity)*1f);
 					wp.light = false;
 					wp.checkWater = false;
+					PathMaker.Instance.waypoints.Add(wp);
 				}
 				else {
 					wp = new PathMaker.Waypoint();

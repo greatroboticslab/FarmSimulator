@@ -58,13 +58,16 @@ public class Manip : MonoBehaviour
 	public GameObject placeGhost;
 	
 	public void UpdatePlacer(int m) {
+		if(PathMaker.Instance == null || PathMaker.Instance.tractionSpots == null || m < 0 || m >= PathMaker.Instance.tractionSpots.Count) return;
+		GameObject tractionSpot = PathMaker.Instance.tractionSpots[m];
+		if(tractionSpot == null || tractionSpot.GetComponent<TractionSpot>() == null) return;
 		
 		if(placeGhost != null) {
 			Destroy(placeGhost);
 		}
 		placeGhost = new GameObject();
 		placeGhost.AddComponent<MeshFilter>();
-		placeGhost.GetComponent<MeshFilter>().mesh = PathMaker.Instance.tractionSpots[m].GetComponent<TractionSpot>().mesh;
+		placeGhost.GetComponent<MeshFilter>().mesh = tractionSpot.GetComponent<TractionSpot>().mesh;
 		placeGhost.AddComponent<MeshRenderer>();
 		placeGhost.GetComponent<MeshRenderer>().material = PathMaker.Instance.ghostMaterial;
 		
@@ -72,21 +75,23 @@ public class Manip : MonoBehaviour
 	
 	public bool MouseInPanel() {
 		
-		return EventSystem.current.IsPointerOverGameObject();
+		return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 	}
 
 	//Place down plants in plots without exiting edit mode.
 	public void PlacePlots() {
-		Debug.Log("PLACING PLOTS");
+		if(plotHelpers == null) return;
 		foreach(GameObject plot in plotHelpers) {
-			plot.GetComponent<PlotHelper>().weedDensity = PathMaker.Instance.weedDensity;
-			plot.GetComponent<PlotHelper>().PlacePlot();
+			if(plot == null) continue;
+			PlotHelper helper = plot.GetComponent<PlotHelper>();
+			if(helper == null) continue;
+			helper.weedDensity = PathMaker.Instance != null ? PathMaker.Instance.weedDensity : 0;
+			helper.PlacePlot();
 		}
 		while(plotHelpers.Count > 0) {
-			Debug.Log("DELETING");
 			GameObject p = plotHelpers[0];
 			plotHelpers.RemoveAt(0);
-			Destroy(p);
+			if(p != null) Destroy(p);
 		}
 	}
 	
@@ -99,7 +104,7 @@ public class Manip : MonoBehaviour
 		if(placeGhost) {
 			Destroy(placeGhost);
 		}
-		cam.mode = 1;
+		if(cam != null) cam.mode = 1;
 		
 	}
 
@@ -135,6 +140,12 @@ public class Manip : MonoBehaviour
 	}
     
     public void StartRobot(RobotInfo robotInfo) {
+		if(robotInfo == null || robotInfo.robot == null || PathMaker.Instance == null) return;
+
+		PathMaker.Instance.selectedRobot = robotInfo;
+		PathMaker.Instance.humanoid = robotInfo.humanoid;
+		PathMaker.Instance.training = robotInfo.training;
+		PathMaker.Instance.useTractor = robotInfo.includeTractor;
 
 		if(robotInfo.animMode) {
 			PathMaker.Instance.animationMode = true;
@@ -142,83 +153,114 @@ public class Manip : MonoBehaviour
 		}
 
 		if(PathMaker.Instance.animationMode) {
-			PathMaker.Instance.roverControls.gameObject.SetActive(false);
-			PathMaker.Instance.roverControlsANIM.SetActive(true);
+			if(PathMaker.Instance.roverControls != null) PathMaker.Instance.roverControls.gameObject.SetActive(false);
+			if(PathMaker.Instance.roverControlsANIM != null) PathMaker.Instance.roverControlsANIM.SetActive(true);
 		}
 
-		cam.mode = 1;
+		if(cam != null) cam.mode = 1;
 		Cursor.lockState = CursorLockMode.None;
-    	cam.chaseCam = robotInfo.chaseCam;
-    	curRobot = Instantiate(robotInfo.robot);
+		if(cam != null) cam.chaseCam = robotInfo.chaseCam;
+		curRobot = Instantiate(robotInfo.robot);
 		if(PathMaker.Instance.humanoid) {
-			curRobot.GetComponent<HumanoidRobot>().actor = PathMaker.Instance.actor;
-			PathMaker.Instance.humanoidRobot = curRobot.GetComponent<HumanoidRobot>();
+			HumanoidRobot humanoidComponent = curRobot.GetComponent<HumanoidRobot>();
+			if(humanoidComponent != null) humanoidComponent.actor = PathMaker.Instance.actor;
+			PathMaker.Instance.humanoidRobot = humanoidComponent;
 			if(PathMaker.Instance.training) {
-				PathMaker.Instance.director.gameObject.SetActive(true);
-				PathMaker.Instance.director.actor.SetActive(true);
-				PathMaker.Instance.humanoidRobot.training = true;
+				if(PathMaker.Instance.director != null) {
+					PathMaker.Instance.director.gameObject.SetActive(true);
+					if(PathMaker.Instance.director.actor != null) PathMaker.Instance.director.actor.SetActive(true);
+				}
+				if(PathMaker.Instance.humanoidRobot != null) PathMaker.Instance.humanoidRobot.training = true;
 			}
 		}
 		
-		PathMaker.Instance.selectMenuObj.SetActive(false);
+		if(PathMaker.Instance.selectMenuObj != null) PathMaker.Instance.selectMenuObj.SetActive(false);
 		
 		PathMaker.Instance.currentRobot = curRobot;
 
-	if(PathMaker.Instance.humanoid) {
-		PathMaker.Instance.robotConfig.humanoid = curRobot.GetComponent<HumanoidRobot>();
-	}
-	else {
-		PathMaker.Instance.robotConfig.rover = curRobot.GetComponent<DebugRover>();
-	}
-	PathMaker.Instance.robotConfig.InitializeValues();
-	PathMaker.Instance.robotConfig.sync = true;
-
-    	curRobot.transform.position = Vector3.zero;
-    	cam.camPos = new Vector3(0.4f,1,-0.4f);
-    	cam.targetPos = new Vector3(0,1.0f,0);
-    	cam.focusedRobot = curRobot;
-    	if(robotInfo.terrain) {
-    		terrain = Instantiate(selectedTerrain);
-			
-			if(!PathMaker.Instance.humanoid) {
-				curRobot.GetComponent<DebugRover>().mapInfo = terrain.GetComponent<MapInfo>();
+		if(PathMaker.Instance.robotConfig != null) {
+			if(PathMaker.Instance.humanoid) {
+				PathMaker.Instance.robotConfig.humanoid = curRobot.GetComponent<HumanoidRobot>();
 			}
 			else {
-				curRobot.GetComponent<HumanoidRobot>().mapInfo = terrain.GetComponent<MapInfo>();
+				PathMaker.Instance.robotConfig.rover = curRobot.GetComponent<DebugRover>();
 			}
-			curRobot.transform.position = terrain.GetComponent<MapInfo>().spawn.position;
-			cam.camPos = terrain.GetComponent<MapInfo>().spawn.position;
+			PathMaker.Instance.robotConfig.InitializeValues();
+			PathMaker.Instance.robotConfig.sync = true;
+		}
+
+		curRobot.transform.position = Vector3.zero;
+		if(cam != null) {
+			cam.camPos = new Vector3(0.4f,1,-0.4f);
+			cam.targetPos = new Vector3(0,1.0f,0);
+			cam.focusedRobot = curRobot;
+		}
+		MapInfo mapInfo = PathMaker.Instance.GetActiveMapInfo();
+		bool hasLoadedFarm = PathMaker.Instance.activeSubscene != null && mapInfo != null;
+		bool useTerrain = robotInfo.terrain || hasLoadedFarm;
+		PathMaker.Instance.useTerrain = useTerrain;
+
+		if(useTerrain) {
+			if(hasLoadedFarm) {
+				terrain = PathMaker.Instance.activeSubscene;
+			}
+			else if(selectedTerrain != null) {
+				terrain = Instantiate(selectedTerrain);
+				PathMaker.Instance.activeSubscene = terrain;
+				mapInfo = terrain.GetComponent<MapInfo>();
+				if(mapInfo == null) mapInfo = terrain.GetComponentInChildren<MapInfo>();
+				PathMaker.Instance.activeMapInfo = mapInfo;
+			}
+
+			if(terrain != null && mapInfo != null) {
+				if(!PathMaker.Instance.humanoid && curRobot.GetComponent<DebugRover>() != null) {
+					curRobot.GetComponent<DebugRover>().mapInfo = mapInfo;
+				}
+				else if(curRobot.GetComponent<HumanoidRobot>() != null) {
+					curRobot.GetComponent<HumanoidRobot>().mapInfo = mapInfo;
+				}
+				if(mapInfo.spawn != null) {
+					curRobot.transform.position = mapInfo.spawn.position;
+					if(cam != null) cam.camPos = mapInfo.spawn.position;
+				}
+			}
     	}
 		else {
-			terrain = Instantiate(blankTerrainPrefab);
+			if(blankTerrainPrefab != null) terrain = Instantiate(blankTerrainPrefab);
 			PathMaker.Instance.emptyTerrain = terrain;
 			curRobot.transform.position = new Vector3(0, 1.4f, 0);
 		}
 		if(!PathMaker.Instance.humanoid) {
-			botCam = curRobot.GetComponent<DebugRover>().camera;
-			pd.rover = curRobot.GetComponent<DebugRover>();
-			if(!PathMaker.Instance.VR) {
-				cam.transform.position = curRobot.GetComponent<DebugRover>().camOrg.transform.position;
-			}
-			else {
-				cam.cc.enabled = false;
-				cam.transform.position = curRobot.GetComponent<DebugRover>().camOrg.transform.position;
-				cam.cc.enabled = true;
+			DebugRover debugRover = curRobot.GetComponent<DebugRover>();
+			if(debugRover != null) {
+				botCam = debugRover.camera;
+				if(pd != null) pd.rover = debugRover;
+				if(cam != null && debugRover.camOrg != null) {
+					if(!PathMaker.Instance.VR) {
+						cam.transform.position = debugRover.camOrg.transform.position;
+					}
+					else if(cam.cc != null) {
+						cam.cc.enabled = false;
+						cam.transform.position = debugRover.camOrg.transform.position;
+						cam.cc.enabled = true;
+					}
+				}
 			}
 			
 			
 			if(SocketInterace.Instance != null) {
-				SocketInterace.Instance.Connect();
-				SocketInterace.Instance.rover = curRobot.GetComponent<DebugRover>();
+				SocketInterace.Instance.rover = debugRover;
 			}
 		}
-		PathMaker.Instance.placeCamOrg.transform.position = curRobot.transform.position + new Vector3(0,20,0);
+		if(PathMaker.Instance.placeCamOrg != null) PathMaker.Instance.placeCamOrg.transform.position = curRobot.transform.position + new Vector3(0,20,0);
     }
 
 	public void UpdatePlaceMarker(Vector3 pos) {
 
-		PathMaker.Instance.placeMarker.SetActive(true);
-		PathMaker.Instance.placeMarker.transform.position = pos;
+		if(PathMaker.Instance != null && PathMaker.Instance.placeMarker != null) {
+			PathMaker.Instance.placeMarker.SetActive(true);
+			PathMaker.Instance.placeMarker.transform.position = pos;
+		}
 
 	}
 
@@ -232,10 +274,10 @@ public class Manip : MonoBehaviour
 			if(!started && PathMaker.Instance.mapReady) {
 				if(quickStart) {
 					started = true;
-					StartRobot(PathMaker.Instance.selectedRobot.GetComponent<RobotInfo>());
-					if(PathMaker.Instance.useTerrain) {
+					StartRobot(PathMaker.Instance.selectedRobot);
+					if(PathMaker.Instance.useTerrain && terrain != null) {
 						PathMaker.Instance.map = terrain.GetComponent<OnlineMaps>();
-						PathMaker.Instance.map.SetPosition(PathMaker.Instance.mapCoords.x,PathMaker.Instance.mapCoords.y);
+						if(PathMaker.Instance.map != null) PathMaker.Instance.map.SetPosition(PathMaker.Instance.mapCoords.x,PathMaker.Instance.mapCoords.y);
 					}
 				}
 			}
@@ -246,6 +288,7 @@ public class Manip : MonoBehaviour
 		if(placingTraction) {
 			
 			RaycastHit hit;
+			if(Camera.main == null) return;
 			Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
 				if (Physics.Raycast (ray, out hit, 4000f)) {
 					
@@ -256,8 +299,13 @@ public class Manip : MonoBehaviour
 							
 							if(!MouseInPanel()) {
 								
-								GameObject newTractionSpot = Instantiate(PathMaker.Instance.tractionSpots[PathMaker.Instance.roverControls.tractionDropdown.value]);
-								newTractionSpot.transform.position = hit.point;
+								if(PathMaker.Instance != null && PathMaker.Instance.roverControls != null && PathMaker.Instance.roverControls.tractionDropdown != null) {
+									int tractionIndex = PathMaker.Instance.roverControls.tractionDropdown.value;
+									if(PathMaker.Instance.tractionSpots != null && tractionIndex >= 0 && tractionIndex < PathMaker.Instance.tractionSpots.Count && PathMaker.Instance.tractionSpots[tractionIndex] != null) {
+										GameObject newTractionSpot = Instantiate(PathMaker.Instance.tractionSpots[tractionIndex]);
+										newTractionSpot.transform.position = hit.point;
+									}
+								}
 								
 							}
 						}
@@ -278,10 +326,10 @@ public class Manip : MonoBehaviour
 		if(placingPlot) {
 			
 			if(Input.GetKeyDown("[+]")) {
-				PathMaker.Instance.weedDensity += 0.5f;
+				if(PathMaker.Instance != null) PathMaker.Instance.weedDensity += 0.5f;
 			}
 			if(Input.GetKeyDown("[-]")) {
-				PathMaker.Instance.weedDensity -= 0.5f;
+				if(PathMaker.Instance != null) PathMaker.Instance.weedDensity -= 0.5f;
 			}
 			
 			//weedDensityDisplay.SetActive(true);
@@ -289,6 +337,7 @@ public class Manip : MonoBehaviour
 			//weedDensityDisplay.GetComponent<TMP_Text>().text = "Weed Density: " + weedDensity;
 			
 			RaycastHit hit;
+			if(Camera.main == null) return;
 			Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
 			if (Physics.Raycast (ray, out hit, 4000f)) {
 				UpdatePlaceMarker(hit.point);
@@ -296,7 +345,7 @@ public class Manip : MonoBehaviour
 			
 			if(Input.GetMouseButtonDown(0)) {
 
-				if(PathMaker.Instance.selectedCrop) {
+				if(PathMaker.Instance != null && PathMaker.Instance.selectedCrop) {
 
                     if(PathMaker.Instance.singlePlace) {
                         if(!MouseInPanel()) {
@@ -315,9 +364,11 @@ public class Manip : MonoBehaviour
                             //if (Physics.Raycast (ray, out hit, 4000f)) {
 
                                 plotTopLeft = new Vector2(hit.point.x, hit.point.z);
-                                plotHelper = Instantiate(plotHelperPrefab);
-                                plotHelper.GetComponent<PlotHelper>().plant = PathMaker.Instance.selectedCrop;
-                                plotHelpers.Add(plotHelper);
+                                if(plotHelperPrefab != null) {
+	                                plotHelper = Instantiate(plotHelperPrefab);
+	                                if(plotHelper.GetComponent<PlotHelper>() != null) plotHelper.GetComponent<PlotHelper>().plant = PathMaker.Instance.selectedCrop;
+	                                plotHelpers.Add(plotHelper);
+                                }
                                 //placeTL = true;
                                 placeBR = true;
 
@@ -357,7 +408,9 @@ public class Manip : MonoBehaviour
 			if(plotHelper != null && validPlot) {
 			
 				plotHelper.transform.position = new Vector3((plotTopLeft.x+plotBottomRight.x)/2,500,(plotTopLeft.y+plotBottomRight.y)/2);
-				plotHelper.GetComponent<PlotHelper>().size = new Vector2(Mathf.Abs(plotTopLeft.x-plotBottomRight.x)/2, Mathf.Abs(plotTopLeft.y-plotBottomRight.y)/2);
+				if(plotHelper.GetComponent<PlotHelper>() != null) {
+					plotHelper.GetComponent<PlotHelper>().size = new Vector2(Mathf.Abs(plotTopLeft.x-plotBottomRight.x)/2, Mathf.Abs(plotTopLeft.y-plotBottomRight.y)/2);
+				}
 			
 			}
 			
@@ -367,7 +420,7 @@ public class Manip : MonoBehaviour
 			
 		}
 		else {
-			PathMaker.Instance.placeMarker.SetActive(false);
+			if(PathMaker.Instance != null && PathMaker.Instance.placeMarker != null) PathMaker.Instance.placeMarker.SetActive(false);
 		}
 		
 		
@@ -438,12 +491,14 @@ public class Manip : MonoBehaviour
 	public void ToggleView() {
 		if(fullView) {
 				fullView = false;
-				fullCamScreen.SetActive(false);
+				if(fullCamScreen != null) fullCamScreen.SetActive(false);
 		}
 		else {
 			fullView = true;
-			fullCamScreen.SetActive(true);
-			fullCamScreen.GetComponent<RectTransform>().sizeDelta = new Vector2(Screen.width,Screen.height);
+			if(fullCamScreen != null) {
+				fullCamScreen.SetActive(true);
+				if(fullCamScreen.GetComponent<RectTransform>() != null) fullCamScreen.GetComponent<RectTransform>().sizeDelta = new Vector2(Screen.width,Screen.height);
+			}
 		}
 	}
 }

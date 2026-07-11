@@ -25486,6 +25486,16 @@ MonoBehaviour:
   selectMenuCameraFocus: {fileID: 129843816}
   currentLocationName: 
   subscenes:
+  - name: MTSU Farms
+    prefab: {fileID: 6713387157312830029, guid: b8499a2a16b5e1a3abe0a90eb99fca00, type: 3}
+  - name: MTSU Farm
+    prefab: {fileID: 6713387157312830029, guid: b8499a2a16b5e1a3abe0a90eb99fca00, type: 3}
+  - name: Hutchinson Farms
+    prefab: {fileID: 2938527062371294486, guid: 363d838e27f9e5447a667cc47b8e0c37, type: 3}
+  - name: Freethought Farm
+    prefab: {fileID: 2938527062371294486, guid: 363d838e27f9e5447a667cc47b8e0c37, type: 3}
+  - name: Williamson Family Farm
+    prefab: {fileID: 2938527062371294486, guid: 363d838e27f9e5447a667cc47b8e0c37, type: 3}
   - name: Farm in the City
     prefab: {fileID: 2334573158658295277, guid: c141e59979d2d8c4cb765618f94815e8, type: 3}
   loaded: 0

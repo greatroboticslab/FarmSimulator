@@ -42,6 +42,7 @@ public class FollowerRover : MonoBehaviour
 	
 	public void FlipCheck() {
 		
+		if(flipPoint == null) return;
 		if(flipPoint.position.y < transform.position.y) {
 			
 			Flip();
@@ -51,6 +52,7 @@ public class FollowerRover : MonoBehaviour
 	}
 	
 	public void DriveUpdate() {
+		if(leader == null || rb == null || leftDrive == null || rightDrive == null) return;
 		
 		float targetHeading = Mathf.Atan2(leader.transform.position.x - transform.position.x,
 		leader.transform.position.z - transform.position.z
@@ -139,6 +141,7 @@ public class FollowerRover : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+		if(leader == null || leftDrive == null || rightDrive == null) return;
 		
 		FlipCheck();
 		

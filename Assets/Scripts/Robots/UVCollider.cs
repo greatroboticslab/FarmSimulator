@@ -22,9 +22,11 @@ public class UVCollider : MonoBehaviour
 	private void OnTriggerEnter(Collider other) {
 		
 		if(other.gameObject.layer == 6) {
-			
-			other.gameObject.GetComponent<Plant>().killingMold = true;
-			other.gameObject.GetComponent<Plant>().rover = rover;
+			Plant plant = other.gameObject.GetComponent<Plant>();
+			if(plant == null) return;
+
+			plant.killingMold = true;
+			plant.rover = rover;
 			
 		}
 		
@@ -33,8 +35,8 @@ public class UVCollider : MonoBehaviour
 	private void OnTriggerExit(Collider other) {
 		
 		if(other.gameObject.layer == 6) {
-			
-			other.gameObject.GetComponent<Plant>().killingMold = false;
+			Plant plant = other.gameObject.GetComponent<Plant>();
+			if(plant != null) plant.killingMold = false;
 			
 		}
 		

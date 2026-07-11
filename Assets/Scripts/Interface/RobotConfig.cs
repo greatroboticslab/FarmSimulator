@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Globalization;
 
 public class RobotConfig : MonoBehaviour
 {
@@ -41,16 +42,16 @@ public class RobotConfig : MonoBehaviour
 
 		if(rover) {
 
-			rover.moveSpeed = float.Parse(moveSpeedInput.text);
-			rover.turnSpeed = float.Parse(turnSpeedInput.text);
-			rover.minDistance = float.Parse(minDistanceInput.text);
-			rover.checkDistance = float.Parse(checkDistanceInput.text);
-			rover.closeSpeed = float.Parse(closeSpeedInput.text);
-			rover.cruiseSpeed = float.Parse(cruiseSpeedInput.text);
-			rover.headingThreshold = float.Parse(headingThresholdInput.text);
+			rover.moveSpeed = ReadFloat(moveSpeedInput, rover.moveSpeed);
+			rover.turnSpeed = ReadFloat(turnSpeedInput, rover.turnSpeed);
+			rover.minDistance = ReadFloat(minDistanceInput, rover.minDistance);
+			rover.checkDistance = ReadFloat(checkDistanceInput, rover.checkDistance);
+			rover.closeSpeed = ReadFloat(closeSpeedInput, rover.closeSpeed);
+			rover.cruiseSpeed = ReadFloat(cruiseSpeedInput, rover.cruiseSpeed);
+			rover.headingThreshold = ReadFloat(headingThresholdInput, rover.headingThreshold);
 
-			rover.frictionMultiplier = frictionInput.value;
-			frictionDisplay.text = "Friction (" + frictionInput.value + ")";
+			if(frictionInput != null) rover.frictionMultiplier = frictionInput.value;
+			if(frictionDisplay != null && frictionInput != null) frictionDisplay.text = "Friction (" + frictionInput.value + ")";
 
 		}
 	}
@@ -60,22 +61,32 @@ public class RobotConfig : MonoBehaviour
 
 		if(rover) {
 
-			roverPanel.SetActive(true);
-			humanoidPanel.SetActive(false);
+			if(roverPanel != null) roverPanel.SetActive(true);
+			if(humanoidPanel != null) humanoidPanel.SetActive(false);
 
-			moveSpeedInput.text = rover.moveSpeed.ToString();
-			turnSpeedInput.text = rover.turnSpeed.ToString();
-			minDistanceInput.text = rover.minDistance.ToString();
-			checkDistanceInput.text = rover.checkDistance.ToString();
-			closeSpeedInput.text = rover.closeSpeed.ToString();
-			cruiseSpeedInput.text = rover.cruiseSpeed.ToString();
-			headingThresholdInput.text = rover.headingThreshold.ToString();
+			SetText(moveSpeedInput, rover.moveSpeed);
+			SetText(turnSpeedInput, rover.turnSpeed);
+			SetText(minDistanceInput, rover.minDistance);
+			SetText(checkDistanceInput, rover.checkDistance);
+			SetText(closeSpeedInput, rover.closeSpeed);
+			SetText(cruiseSpeedInput, rover.cruiseSpeed);
+			SetText(headingThresholdInput, rover.headingThreshold);
 
-			frictionInput.value = rover.frictionMultiplier;
-			frictionDisplay.text = "Friction (" + frictionInput.value + ")";
+			if(frictionInput != null) frictionInput.value = rover.frictionMultiplier;
+			if(frictionDisplay != null && frictionInput != null) frictionDisplay.text = "Friction (" + frictionInput.value + ")";
 
 		}
 
+	}
+
+	private float ReadFloat(TMP_InputField input, float fallback) {
+		if(input == null) return fallback;
+		if(float.TryParse(input.text, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsed)) return parsed;
+		return fallback;
+	}
+
+	private void SetText(TMP_InputField input, float value) {
+		if(input != null) input.text = value.ToString(CultureInfo.InvariantCulture);
 	}
 
 }

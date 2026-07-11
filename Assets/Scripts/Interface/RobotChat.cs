@@ -20,6 +20,7 @@ public class RobotChat : MonoBehaviour
     private string apiKey = "";
     private string apiUrl = "https://api.groq.com/openai/v1/chat/completions";
     private string model = "llama-3.3-70b-versatile";
+    private bool configured;
 
     [System.Serializable]
     private class Config { public string groq_api_key; }
@@ -39,11 +40,12 @@ public class RobotChat : MonoBehaviour
         if (File.Exists(configPath))
         {
             Config cfg = JsonUtility.FromJson<Config>(File.ReadAllText(configPath));
-            apiKey = cfg.groq_api_key;
+            apiKey = cfg != null ? cfg.groq_api_key : "";
+            configured = !string.IsNullOrWhiteSpace(apiKey);
         }
         else
         {
-            Debug.LogError("RobotChat: config.json not found at " + configPath);
+            Debug.Log("RobotChat: optional Groq config not found at " + configPath + ". Chat commands will stay local/offline.");
         }
 
         if (submitButton != null)
@@ -73,12 +75,20 @@ public class RobotChat : MonoBehaviour
 
     public void OnSubmit()
     {
+        if(chatInputField == null || robotResponseText == null) return;
+
         string userMessage = chatInputField.text.Trim();
         if (string.IsNullOrEmpty(userMessage)) return;
 
-        yourChatText.text = "You: " + userMessage;
+        if(yourChatText != null) yourChatText.text = "You: " + userMessage;
         robotResponseText.text = "Robot: thinking...";
         chatInputField.text = "";
+
+        if(!configured)
+        {
+            robotResponseText.text = "Robot: chat API is not configured.";
+            return;
+        }
 
         StartCoroutine(SendToGroq(userMessage));
     }
@@ -113,7 +123,7 @@ public class RobotChat : MonoBehaviour
             {
                 if (PathMaker.Instance != null && PathMaker.Instance.roverControls != null)
                 {
-                    PathMaker.Instance.roverControls.selfDriving.isOn = true;
+                    if(PathMaker.Instance.roverControls.selfDriving != null) PathMaker.Instance.roverControls.selfDriving.isOn = true;
                     Debug.Log("[RobotChat] selfDriving set ON");
                 }
             }
@@ -121,7 +131,7 @@ public class RobotChat : MonoBehaviour
             {
                 if (PathMaker.Instance != null && PathMaker.Instance.roverControls != null)
                 {
-                    PathMaker.Instance.roverControls.selfDriving.isOn = false;
+                    if(PathMaker.Instance.roverControls.selfDriving != null) PathMaker.Instance.roverControls.selfDriving.isOn = false;
                     Debug.Log("[RobotChat] selfDriving set OFF");
                 }
             }
@@ -130,8 +140,8 @@ public class RobotChat : MonoBehaviour
         }
         else
         {
-            robotResponseText.text = "Robot: Error - " + request.error;
-            Debug.LogError("Groq Error: " + request.error + "\n" + request.downloadHandler.text);
+            robotResponseText.text = "Robot: chat service unavailable.";
+            Debug.LogWarning("Groq unavailable: " + request.error);
         }
     }
 

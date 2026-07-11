@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Collections.Generic;
 using TMPro;
 
 public class AnimationLoader : MonoBehaviour
@@ -74,6 +73,7 @@ public class AnimationLoader : MonoBehaviour
 
 	//Reload all animation buttons in Kinematic menu
 	public void RefreshAnimations() {
+		if(buttonPanel == null || buttonPrefab == null || animations == null) return;
 
 		//Delete existing buttons
 		foreach (Transform child in buttonPanel.transform) {
@@ -84,8 +84,10 @@ public class AnimationLoader : MonoBehaviour
 		for(int i = 0; i < animations.Count; i++) {
 			if(ShowAnimation(animations[i])) {
 				GameObject newButton = Instantiate(buttonPrefab, buttonPanel);
-				newButton.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = animations[i].name;
-				newButton.GetComponent<AnimationButton>().animation = animations[i];
+				if(newButton.transform.childCount > 0 && newButton.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>() != null) {
+					newButton.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = animations[i].name;
+				}
+				if(newButton.GetComponent<AnimationButton>() != null) newButton.GetComponent<AnimationButton>().animation = animations[i];
 			}
 		}
 
@@ -93,6 +95,7 @@ public class AnimationLoader : MonoBehaviour
 
 	//Reload animation buttons in the Show Tasks menu (the queue)
 	public void RefreshCurrentTasks() {
+		if(queuePanel == null || buttonPrefab == null || animationQueue == null) return;
 
 		//Delete existing buttons
 		foreach (Transform child in queuePanel.transform) {
@@ -102,14 +105,18 @@ public class AnimationLoader : MonoBehaviour
 		//Add animations
 		for(int i = 0; i < animationQueue.Count; i++) {
 			GameObject newButton = Instantiate(buttonPrefab, queuePanel);
-			newButton.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = "" + (i + 1) + ". " + animationQueue[i].name;
-			newButton.GetComponent<AnimationButton>().animId = i;
+			if(newButton.transform.childCount > 0 && newButton.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>() != null) {
+				newButton.transform.GetChild(0).gameObject.GetComponent<TextMeshProUGUI>().text = "" + (i + 1) + ". " + animationQueue[i].name;
+			}
+			if(newButton.GetComponent<AnimationButton>() != null) newButton.GetComponent<AnimationButton>().animId = i;
 		}
 
 	}
 
 	//Function to determine if an animation entry should be shown or not
 	private bool ShowAnimation(AnimationEntry a) {
+		if(a == null || string.IsNullOrEmpty(a.name)) return false;
+		if(searchBar == null || string.IsNullOrEmpty(searchBar.text)) return true;
 		for(int i = 0; i < searchBar.text.Length; i++) {
 			if(i < a.name.Length) {
 				if(char.ToLower(searchBar.text[i]) == char.ToLower(a.name[i])) {
@@ -126,23 +133,30 @@ public class AnimationLoader : MonoBehaviour
 	}
 
 	public void AddTask(AnimationEntry a) {
+		if(a == null) return;
+		if(animationQueue == null) animationQueue = new List<AnimationEntry>();
 		animationQueue.Add(a);
 	}
 
 	public void RemoveTask(int i) {
+		if(animationQueue == null || i < 0 || i >= animationQueue.Count) return;
 		animationQueue.RemoveAt(i);
 	}
 
 	public void ToggleAnimationWindow() {
 		
+		if(animationWindow == null) return;
 		animationWindow.SetActive(!animationWindow.activeInHierarchy);
-		PathMaker.Instance.manip.smallCamScreen.SetActive(!animationWindow.activeInHierarchy);
+		if(PathMaker.Instance != null && PathMaker.Instance.manip != null && PathMaker.Instance.manip.smallCamScreen != null) {
+			PathMaker.Instance.manip.smallCamScreen.SetActive(!animationWindow.activeInHierarchy);
+		}
 
 	}
 
 	public void TogglePlaceMenu() {
+		if(PathMaker.Instance == null || PathMaker.Instance.posDisplay == null || PathMaker.Instance.manip == null || animationWindow == null || confirmPanel == null) return;
 
-		if(PathMaker.Instance.posDisplay.cropSelect.activeInHierarchy) {
+		if(PathMaker.Instance.posDisplay.cropSelect != null && PathMaker.Instance.posDisplay.cropSelect.activeInHierarchy) {
 			PathMaker.Instance.manip.placingPlot = false;
 			PathMaker.Instance.posDisplay.cropSelect.SetActive(false);
 			animationWindow.SetActive(true);
@@ -151,7 +165,7 @@ public class AnimationLoader : MonoBehaviour
 		}
 		else {
 			PathMaker.Instance.manip.placingPlot = true;
-			PathMaker.Instance.posDisplay.cropSelect.SetActive(true);
+			if(PathMaker.Instance.posDisplay.cropSelect != null) PathMaker.Instance.posDisplay.cropSelect.SetActive(true);
 			animationWindow.SetActive(false);
 			confirmPanel.SetActive(true);
 		}
@@ -160,18 +174,18 @@ public class AnimationLoader : MonoBehaviour
 
 	public void EndPlacement() {
 
-		confirmPanel.SetActive(false);
-		PathMaker.Instance.manip.placingPlot = false;
-		animationWindow.SetActive(true);
+		if(confirmPanel != null) confirmPanel.SetActive(false);
+		if(PathMaker.Instance != null && PathMaker.Instance.manip != null) PathMaker.Instance.manip.placingPlot = false;
+		if(animationWindow != null) animationWindow.SetActive(true);
 
 	}
 
 	public void PlayAll() {
 		
-		if(animationQueue.Count > 0) {
-			if(PathMaker.Instance.humanoidRobot) {
+		if(animationQueue != null && animationQueue.Count > 0) {
+			if(PathMaker.Instance != null && PathMaker.Instance.humanoidRobot != null) {
 				currentStatus = "Starting playback.";
-				PathMaker.Instance.humanoidRobot.actor.PlayClip(animationQueue[0].clip);
+				if(PathMaker.Instance.humanoidRobot.actor != null) PathMaker.Instance.humanoidRobot.actor.PlayClip(animationQueue[0].clip);
 				playing = true;
 				currentTask = 0;
 				
@@ -190,12 +204,12 @@ public class AnimationLoader : MonoBehaviour
     {
 	currentStatus = "No animations selected.";
         LoadAnimations();
-	RefreshAnimations();
 	animationQueue = new List<AnimationEntry>();
+	RefreshAnimations();
     }
 	void Update() {
 
-		if(animationQueue.Count > 0) {
+		if(animationQueue != null && animationQueue.Count > 0) {
 			if(playing) {
 				currentStatus = "Playing: " + animationQueue[currentTask].name;
 
@@ -208,7 +222,9 @@ public class AnimationLoader : MonoBehaviour
 						playing = false;
 					}
 					else {
-						PathMaker.Instance.humanoidRobot.actor.PlayClip(animationQueue[currentTask].clip);
+						if(PathMaker.Instance != null && PathMaker.Instance.humanoidRobot != null && PathMaker.Instance.humanoidRobot.actor != null) {
+							PathMaker.Instance.humanoidRobot.actor.PlayClip(animationQueue[currentTask].clip);
+						}
 					}
 				}
 
@@ -220,6 +236,6 @@ public class AnimationLoader : MonoBehaviour
 			}
 		}
 
-		statusText.text = currentStatus;
+		if(statusText != null) statusText.text = currentStatus;
 	}
 }

@@ -21,6 +21,11 @@ public class PlotHelper : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+		if(stakes == null || stakes.Length < 4) return;
+		for(int i = 0; i < 4; i++) {
+			if(stakes[i] == null) return;
+		}
+
         stakes[0].transform.position = transform.position + new Vector3(size.x,0,size.y);
 		stakes[1].transform.position = transform.position + new Vector3(-size.x,0,size.y);
 		stakes[2].transform.position = transform.position + new Vector3(-size.x,0,-size.y);
@@ -28,29 +33,33 @@ public class PlotHelper : MonoBehaviour
     }
 	
 	public void PlacePlot() {
+		if(plantZone == null || plant == null || PathMaker.Instance == null) return;
 		
 		GameObject newPlot = Instantiate(plantZone);
-		Debug.Log(plant);
-		newPlot.GetComponent<PlantZone>().plant = plant;
-		if(plant.GetComponent<Plant>().moldVulnerable) {
-			newPlot.GetComponent<PlantZone>().actionType = 0;
+		PlantZone plantZoneComponent = newPlot.GetComponent<PlantZone>();
+		Plant plantComponent = plant.GetComponent<Plant>();
+		if(plantZoneComponent == null || plantComponent == null) return;
+
+		plantZoneComponent.plant = plant;
+		if(plantComponent.moldVulnerable) {
+			plantZoneComponent.actionType = 0;
 		}
 		else {
 			if(PathMaker.Instance.humanoid) {
-				newPlot.GetComponent<PlantZone>().actionType = 2;
+				plantZoneComponent.actionType = 2;
 			}
-			else {
-				newPlot.GetComponent<PlantZone>().actionType = PathMaker.Instance.rover.robotType;
+			else if(PathMaker.Instance.rover != null) {
+				plantZoneComponent.actionType = PathMaker.Instance.rover.robotType;
 			}
 		}
-		newPlot.GetComponent<PlantZone>().weedDensity = weedDensity;
+		plantZoneComponent.weedDensity = weedDensity;
 		newPlot.transform.position = transform.position;
 		newPlot.transform.localScale = new Vector3(size.x,20,size.y);
 		//PathMaker.Instance.roverControls.plantMenu.SetActive(false);
-		if(PathMaker.Instance.humanoid) {
+		if(PathMaker.Instance.humanoid && PathMaker.Instance.humanoidRobot != null) {
 			PathMaker.Instance.humanoidRobot.wantsToTeleport = true;
 		}
-		else {
+		else if(PathMaker.Instance.rover != null) {
 			PathMaker.Instance.rover.wantsToTeleport = true;
 		}
 

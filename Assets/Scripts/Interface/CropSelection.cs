@@ -30,14 +30,19 @@ public class CropSelection : MonoBehaviour
     }
 
 	public void AddButtons() {
+		if(items == null || buttonPrefab == null || transform.childCount == 0) return;
 
 		foreach (var item in items)
 		{
+			if(item == null) continue;
 		    GameObject newButton = Instantiate(buttonPrefab, transform.GetChild(0));
-		    newButton.GetComponentInChildren<TMP_Text>().text = item.name;
-		    newButton.GetComponent<Image>().sprite = item.icon;
+		    TMP_Text label = newButton.GetComponentInChildren<TMP_Text>();
+			if(label != null) label.text = item.name;
+			Image image = newButton.GetComponent<Image>();
+			if(image != null) image.sprite = item.icon;
 
-		    newButton.GetComponent<Button>().onClick.AddListener(() => OnItemSelected(item));
+			Button button = newButton.GetComponent<Button>();
+			if(button != null) button.onClick.AddListener(() => OnItemSelected(item));
 		}
 
 	}
@@ -50,10 +55,10 @@ public class CropSelection : MonoBehaviour
 
     void OnItemSelected(ItemBox item)
     {
-        Debug.Log("Selected: " + item.name);
+		if(item == null || PathMaker.Instance == null) return;
         PathMaker.Instance.selectedCrop = item.obj;
         // Do something with the selection
-        transform.parent.gameObject.SetActive(false); // Hide popup after selection
+        if(transform.parent != null) transform.parent.gameObject.SetActive(false); // Hide popup after selection
     }
 
 }

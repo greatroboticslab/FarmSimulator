@@ -8,6 +8,7 @@ public class ROSRover : MonoBehaviour
 {
 	
 	ROSConnection ros;
+	public bool enableRos;
 	
 	private string topicName = "drrobot_motor_cmd";
 	
@@ -19,12 +20,19 @@ public class ROSRover : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+		if(!enableRos) {
+			enabled = false;
+			return;
+		}
+
 		instructionList = new List<string>();
 		instructionList.Add("MMW !MG");
 		instructionList.Add("MMW !M 200 200");
 		instructionList.Add("MMW !M 0 0");
         ros = ROSConnection.GetOrCreateInstance();
-		ros.RegisterPublisher<RosMessageTypes.Robots.DrRobotMoveMsg>(topicName);
+		if(ros != null) {
+			ros.RegisterPublisher<RosMessageTypes.Robots.DrRobotMoveMsg>(topicName);
+		}
     }
 
     // Update is called once per frame
@@ -32,7 +40,7 @@ public class ROSRover : MonoBehaviour
     {
         timeElapsed += Time.deltaTime;
 
-        if (timeElapsed > messageFreq) {
+        if (ros != null && instructionList != null && instructionList.Count > 0 && timeElapsed > messageFreq) {
 			
 			RosMessageTypes.Robots.DrRobotMoveMsg rMsg = new RosMessageTypes.Robots.DrRobotMoveMsg(
 			instructionList[frame%instructionList.Count]

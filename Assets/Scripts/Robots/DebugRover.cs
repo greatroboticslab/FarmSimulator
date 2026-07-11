@@ -598,7 +598,12 @@ public class DebugRover : MonoBehaviour
 		float stuckFactor = 0;
 		
 		//Debug.Log(mapInfo.tractionZone.GetTraction(transform.position));
-		currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
+		if(mapInfo != null && mapInfo.tractionZone != null) {
+			currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
+		}
+		else {
+			currentFriction = 1f;
+		}
 		//Debug.Log(mapInfo.tractionZone.tractionGrid[0,0]);
 		
 		float rayDistance = 1.7f;
@@ -610,8 +615,11 @@ public class DebugRover : MonoBehaviour
         if (Physics.Raycast(ray, out hit, rayDistance, layer17Mask))
         {
 			//Debug.Log("Traction Zone!");
-			currentFriction = hit.collider.gameObject.GetComponent<TractionSpot>().traction;
-			stuckFactor = hit.collider.gameObject.GetComponent<TractionSpot>().stuckFactor;
+			TractionSpot tractionSpot = hit.collider.gameObject.GetComponent<TractionSpot>();
+			if(tractionSpot != null) {
+				currentFriction = tractionSpot.traction;
+				stuckFactor = tractionSpot.stuckFactor;
+			}
 		}
 		float stuckScore = Mathf.Abs(forwardInput) * stuckFactor * 0.01f;
 		if(Random.value < stuckScore) {
@@ -619,6 +627,7 @@ public class DebugRover : MonoBehaviour
 		}
 		
 		foreach(RotateWheel w in wheelRot) {
+			if(w == null || w.col == null) continue;
 			WheelFrictionCurve ff = w.col.forwardFriction;
 			ff.stiffness = w.initialStiffness[0] * currentFriction * frictionMultiplier;
 			if(stuck) {

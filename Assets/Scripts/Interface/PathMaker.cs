@@ -61,6 +61,8 @@ public class PathMaker : MonoBehaviour
 	public bool placedDown;
 	
 	public OnlineMaps map;
+	public GameObject activeSubscene;
+	public MapInfo activeMapInfo;
 	public GameObject emptyTerrain; //Blank plane used for training
 	
 	public MainCam mainCam;
@@ -106,10 +108,16 @@ public class PathMaker : MonoBehaviour
 		
 		Instance = this;
         waypoints = new List<Waypoint>();
-		Instance.selectedRobot = GetComponent<SelectMenu>().robotGroups[0].robotPrefabs[0].GetComponent<RobotInfo>();
+		SelectMenu menu = GetComponent<SelectMenu>();
+		if(menu != null && menu.robotGroups.Count > 0 && menu.robotGroups[0].robotPrefabs.Count > 0 && menu.robotGroups[0].robotPrefabs[0] != null) {
+			Instance.selectedRobot = menu.robotGroups[0].robotPrefabs[0].GetComponent<RobotInfo>();
+		}
     }
 	
 	public Waypoint GetNextWaypoint(Vector3 pos) {
+		if(waypoints == null || waypoints.Count == 0) {
+			return new Waypoint { pos = new Vector2(pos.x, pos.z) };
+		}
 		Vector2 pos2 = new Vector2(pos.x,pos.z);
 		int least = 0;
 		for(int i = 0; i < waypoints.Count; i++) {
@@ -220,57 +228,106 @@ public class PathMaker : MonoBehaviour
 			Destroy(tractor.gameObject);
 		}
 		
-		if(map) {
+		if(map && map.gameObject != activeSubscene) {
 			Destroy(map.gameObject);
 			
+		}
+		if(activeSubscene) {
+			Destroy(activeSubscene);
 		}
 		if(emptyTerrain) {
 			Destroy(emptyTerrain);
 		}
+		activeSubscene = null;
+		activeMapInfo = null;
+		map = null;
+		emptyTerrain = null;
+		currentRobot = null;
 		
-		manip.cam.mode = 3;
-		manip.cam.targetPos = Vector3.zero;
-		manip.cam.camPos = new Vector3(3,5,0);
-		manip.cam.chaseCam = false;
-		manip.cam.transform.position = new Vector3(3,5,0);
-		manip.cam.currentFocusPoint = new Vector3(0,0,0);
-		selectMenuObj.SetActive(true);
-		trainingActor.gameObject.SetActive(false);
-		manip.started = false;
+		if(manip != null && manip.cam != null) {
+			manip.cam.mode = 3;
+			manip.cam.targetPos = Vector3.zero;
+			manip.cam.camPos = new Vector3(3,5,0);
+			manip.cam.chaseCam = false;
+			manip.cam.transform.position = new Vector3(3,5,0);
+			manip.cam.currentFocusPoint = new Vector3(0,0,0);
+			manip.started = false;
+		}
+		if(selectMenuObj != null) selectMenuObj.SetActive(true);
+		if(trainingActor != null) trainingActor.gameObject.SetActive(false);
 		mapReady = false;
 		FindObjectOfType<RobotChat>()?.HideChat();
 		placedDown = false;
 		hSpawnTime = 0;
-		roverControls.gameObject.SetActive(false);
+		if(roverControls != null) roverControls.gameObject.SetActive(false);
 		
 		
-		actor.anim.SetInteger("gear", 0);
-		actor.anim.SetBool("changeGear", false);
-		actor.anim.SetBool("idle", true);
-		actor.anim.SetBool("brake",false);
-		actor.anim.SetFloat("speed",0);
-		actor.anim.SetBool("tractor",false);
-		actor.anim.SetBool("harvesting",false);
-		actor.anim.SetFloat("turning",0);
+		if(actor != null && actor.anim != null) {
+			actor.anim.SetInteger("gear", 0);
+			actor.anim.SetBool("changeGear", false);
+			actor.anim.SetBool("idle", true);
+			actor.anim.SetBool("brake",false);
+			actor.anim.SetFloat("speed",0);
+			actor.anim.SetBool("tractor",false);
+			actor.anim.SetBool("harvesting",false);
+			actor.anim.SetFloat("turning",0);
+		}
 		
 		
 	}
 
 	public void TogglePlaceMenu() {
 
-		posDisplay.CropButtonPressed();
-		manip.placingPlot = !manip.placingPlot;
+		if(posDisplay != null) posDisplay.CropButtonPressed();
+		if(manip != null) manip.placingPlot = !manip.placingPlot;
 
 	}
 	
 	public void LoadSubscene(string n) {
 		currentLocationName = n;
+		if(subscenes == null || subscenes.Count == 0) {
+			Debug.LogWarning("PathMaker: no subscenes configured for location '" + n + "'.");
+			return;
+		}
+
 		foreach(Subscene s in subscenes) {
-			if(s.name == n) {
+			if(s != null && s.name == n) {
+				if(s.prefab == null) {
+					Debug.LogWarning("PathMaker: subscene '" + n + "' has no prefab assigned.");
+					return;
+				}
+				if(activeSubscene != null) {
+					Destroy(activeSubscene);
+				}
+				if(emptyTerrain != null) {
+					Destroy(emptyTerrain);
+					emptyTerrain = null;
+				}
 				GameObject newSubscene = Instantiate(s.prefab);
 				newSubscene.transform.position = Vector3.zero;
+				activeSubscene = newSubscene;
+				activeMapInfo = newSubscene.GetComponent<MapInfo>();
+				if(activeMapInfo == null) activeMapInfo = newSubscene.GetComponentInChildren<MapInfo>();
+				map = newSubscene.GetComponent<OnlineMaps>();
+				if(map == null) map = newSubscene.GetComponentInChildren<OnlineMaps>();
+				if(manip != null) manip.terrain = newSubscene;
+				loaded = true;
+				return;
 			}
 		}
+
+		Debug.LogWarning("PathMaker: no subscene found for location '" + n + "'.");
+	}
+
+	public MapInfo GetActiveMapInfo() {
+		if(activeMapInfo != null) return activeMapInfo;
+		if(activeSubscene != null) {
+			activeMapInfo = activeSubscene.GetComponent<MapInfo>();
+			if(activeMapInfo == null) activeMapInfo = activeSubscene.GetComponentInChildren<MapInfo>();
+			if(activeMapInfo != null) return activeMapInfo;
+		}
+		if(map != null) return map.GetComponent<MapInfo>();
+		return null;
 	}
 	
     // Update is called once per frame
@@ -301,7 +358,7 @@ public class PathMaker : MonoBehaviour
 			}
 		}
 		*/
-		if(Input.GetKeyDown("c")) {
+		if(Input.GetKeyDown("c") && PathMaker.Instance.currentRobot != null && PathMaker.Instance.currentRobot.GetComponent<HumanoidRobot>() != null) {
 			PlaceDown(PathMaker.Instance.currentRobot.GetComponent<HumanoidRobot>());
 		}
 		

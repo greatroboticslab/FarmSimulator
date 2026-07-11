@@ -26,6 +26,8 @@ public class ObjectPlacer : MonoBehaviour
 	private bool loaded;
 	
 	public void SpawnProp(GameObject prop) {
+		if(prop == null) return;
+
 		GameObject newProp = Instantiate(prop);
 		newProp.transform.parent = transform;
 		
@@ -56,19 +58,23 @@ public class ObjectPlacer : MonoBehaviour
     void Update()
     {
         if(t >= waitTime && !loaded) {
-			
-			GetComponent<GrassSpawner>().StartGrass();
-			
 			loaded = true;
+
+			GrassSpawner grassSpawner = GetComponent<GrassSpawner>();
+			if(grassSpawner != null) {
+				grassSpawner.StartGrass();
+			}
 			
-			Random.seed = seed;
+			Random.InitState(seed);
 			float maxVal = 0;
 			
 			for(int i = 0; i < props.Count; i++) {
-				maxVal += props[i].weight;
+				if(props[i] != null && props[i].prefab != null) {
+					maxVal += props[i].weight;
+				}
 			}
 			
-			
+			if(maxVal <= 0) return;
 			
 			for(int i = 0; i < propAmount; i++) {
 				
@@ -76,6 +82,7 @@ public class ObjectPlacer : MonoBehaviour
 				float rIt  = 0;
 				
 				for(int j = 0; j < props.Count; j++) {
+					if(props[j] == null || props[j].prefab == null) continue;
 					
 					if(rVal >= rIt && rVal < rIt + props[j].weight) {
 						SpawnProp(props[j].prefab);

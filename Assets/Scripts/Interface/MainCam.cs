@@ -51,20 +51,22 @@ public class MainCam : MonoBehaviour
 			if(isVRCam) {
 				if(!PathMaker.Instance.VR) {
 					gameObject.SetActive(false);
+					return;
 				}
 			}
 			else {
 				if(PathMaker.Instance.VR) {
 					gameObject.SetActive(false);
+					return;
 				}
 			}
 		}
 		
-		if(Input.GetKeyDown("p")) {
+		if(Input.GetKeyDown("p") && PathMaker.Instance != null && focusedRobot != null) {
 			if(mode == 2) {
 				mode = 1;
 			}
-			else {
+			else if(PathMaker.Instance.placeCamOrg != null) {
 				mode = 2;
 				PathMaker.Instance.placeCamOrg.transform.position = focusedRobot.transform.position + new Vector3(0,15,0);
 			}
@@ -72,12 +74,12 @@ public class MainCam : MonoBehaviour
 		
 		
 		//Chasecam
-		if(mode == 1) {
+		if(mode == 1 && focusedRobot != null) {
 			currentFocusPoint = Vector3.Lerp(currentFocusPoint, focusedRobot.transform.position, Time.deltaTime * 5.0f);
 			transform.LookAt(currentFocusPoint);
 		}
 		
-		if(mode == 2) {
+		if(mode == 2 && PathMaker.Instance != null && PathMaker.Instance.placeCamOrg != null) {
 			
 			if(!PathMaker.Instance.VR) {
 				if(Input.GetKey("up")) {
@@ -98,7 +100,7 @@ public class MainCam : MonoBehaviour
 				
 			}
 			
-			if(Input.GetKeyDown(KeyCode.Return)) {
+			if(Input.GetKeyDown(KeyCode.Return) && PathMaker.Instance.manip != null) {
 				
 				PathMaker.Instance.manip.EndEditMode();
 				
@@ -107,6 +109,7 @@ public class MainCam : MonoBehaviour
 		
 		//Select robot mode
 		if(mode == 3) {
+			if(Camera.main == null || PathMaker.Instance == null) return;
 			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit, 100))
@@ -124,7 +127,7 @@ public class MainCam : MonoBehaviour
 						PathMaker.Instance.useTerrain = ri.terrain;
 						mode = 0;
 						transform.position = Vector3.zero;
-						PathMaker.Instance.coordMenu.SetActive(true);
+						if(PathMaker.Instance.coordMenu != null) PathMaker.Instance.coordMenu.SetActive(true);
 					}
 				}
             }
@@ -140,7 +143,7 @@ public class MainCam : MonoBehaviour
 		
 		Vector3 cForward = Vector3.zero;
 		
-		if(isVRCam) {
+		if(isVRCam && cc != null && cc.enabled && leftHandTransform != null) {
 			cForward = leftHandTransform.transform.forward;
 			cForward = new Vector3(cForward.x, 0, cForward.z);
 			cForward.Normalize();
@@ -159,7 +162,7 @@ public class MainCam : MonoBehaviour
         	//transform.localRotation = Quaternion.Euler(lookRot);
         }
 		else if(mode == 2) {
-			
+			if(PathMaker.Instance == null || PathMaker.Instance.placeCamOrg == null) return;
 				targetPos = PathMaker.Instance.placeCamOrg.transform.position;
 				
 				transform.position = targetPos;
@@ -200,7 +203,7 @@ public class MainCam : MonoBehaviour
                         if(PathMaker.Instance.humanoid) {
                             targetPos = focusedRobot.transform.position + new Vector3(5,2,5);
                         }
-                        else {
+                        else if(focusedRobot.GetComponent<DebugRover>() != null && focusedRobot.GetComponent<DebugRover>().camOrg != null) {
                             targetPos = focusedRobot.GetComponent<DebugRover>().camOrg.transform.position;
                         }
 					}

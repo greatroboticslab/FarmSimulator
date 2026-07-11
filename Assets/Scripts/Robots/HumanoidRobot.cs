@@ -605,6 +605,8 @@ public class HumanoidRobot : MonoBehaviour
 		}
 	}
 	
+	private Texture2D inputTexture;
+
 	public float[] GetInputs() {
 		List<float> lInputs = new List<float>();
 		
@@ -612,19 +614,21 @@ public class HumanoidRobot : MonoBehaviour
 		lInputs.Add(curTime);
 		
 		//Camera
+		int camWidth = mainCamera.targetTexture.width;
+		int camHeight = mainCamera.targetTexture.height;
+		RenderTexture prevActive = RenderTexture.active;
 		RenderTexture.active = mainCamera.targetTexture;
-		Texture2D currenttexture = new Texture2D(1, 1, TextureFormat.RGBA32, false, true);
-		currenttexture.ReadPixels(new Rect(0,0,mainCamera.targetTexture.width,mainCamera.targetTexture.height), 0, 0, false);
-		for(int y = 0; y < mainCamera.targetTexture.height; y++) {
-			for(int x = 0; x < mainCamera.targetTexture.width; x++) {
-				
-				
-				
-				Color p = currenttexture.GetPixel(x,y);
-				lInputs.Add(p.r);
-				lInputs.Add(p.g);
-				lInputs.Add(p.b);
-			}
+		//texture must match the render target size or ReadPixels reads out of bounds
+		if(inputTexture == null || inputTexture.width != camWidth || inputTexture.height != camHeight) {
+			inputTexture = new Texture2D(camWidth, camHeight, TextureFormat.RGBA32, false, true);
+		}
+		inputTexture.ReadPixels(new Rect(0, 0, camWidth, camHeight), 0, 0, false);
+		RenderTexture.active = prevActive;
+		Color[] camPixels = inputTexture.GetPixels();
+		foreach(Color p in camPixels) {
+			lInputs.Add(p.r);
+			lInputs.Add(p.g);
+			lInputs.Add(p.b);
 		}
 		
 		//Velocity
@@ -1372,8 +1376,11 @@ public class HumanoidRobot : MonoBehaviour
 		float stuckFactor = 0;
 		
 		//Debug.Log(mapInfo.tractionZone.GetTraction(transform.position));
-		if(mapInfo) {
+		if(mapInfo != null && mapInfo.tractionZone != null) {
 			currentFriction = mapInfo.tractionZone.GetTraction(transform.position);
+		}
+		else {
+			currentFriction = 1f;
 		}
 		//Debug.Log(mapInfo.tractionZone.tractionGrid[0,0]);
 		
@@ -1391,8 +1398,11 @@ public class HumanoidRobot : MonoBehaviour
         {
 			if (hit.collider.CompareTag("tractionSpot")) {
 				Debug.Log("Traction Zone!");
-				currentFriction = hit.collider.gameObject.GetComponent<TractionSpot>().traction;
-				stuckFactor = hit.collider.gameObject.GetComponent<TractionSpot>().stuckFactor;
+				TractionSpot tractionSpot = hit.collider.gameObject.GetComponent<TractionSpot>();
+				if(tractionSpot != null) {
+					currentFriction = tractionSpot.traction;
+					stuckFactor = tractionSpot.stuckFactor;
+				}
 			}
 		}
 		

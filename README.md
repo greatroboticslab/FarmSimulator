@@ -10,6 +10,8 @@ With this simulator, you are allowed to plant multiple crops and perform related
 
 # User's Guide
 
+For the shortest local setup path, see [SETUP_AND_RUN.md](SETUP_AND_RUN.md). For a map of what is project-owned versus vendor/example content, see [PROJECT_AUDIT.md](PROJECT_AUDIT.md).
+
 Please read carefully while you run the simulator. When first opening, make sure you open the correct scene by double clicking on Assets/Scenes/SampleScene.unity
 
 ![main menu](Media/1.png "Main Menu")

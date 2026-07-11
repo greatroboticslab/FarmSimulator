@@ -12,7 +12,8 @@ public class AnimationButton : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        GetComponent<Button>().onClick.AddListener(ButtonClicked);
+        Button button = GetComponent<Button>();
+		if(button != null) button.onClick.AddListener(ButtonClicked);
     }
 
     // Update is called once per frame
@@ -23,6 +24,8 @@ public class AnimationButton : MonoBehaviour
 
 	public void ButtonClicked() {
 
+		if(PathMaker.Instance == null || PathMaker.Instance.animationLoader == null) return;
+
 		if(animId >= 0) {
 			PathMaker.Instance.animationLoader.RemoveTask(animId);
 			PathMaker.Instance.animationLoader.RefreshCurrentTasks();
@@ -30,7 +33,6 @@ public class AnimationButton : MonoBehaviour
 		}
 		else {
 
-			Debug.Log(animation.name + " added!");
 			PathMaker.Instance.animationLoader.AddTask(animation);
 			PathMaker.Instance.animationLoader.RefreshCurrentTasks();
 

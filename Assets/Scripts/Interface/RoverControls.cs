@@ -29,38 +29,40 @@ public class RoverControls : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-		selfDriving.isOn = false;
-        plantButton.onClick.AddListener(TogglePlanting);
-		tractionButton.onClick.AddListener(ToggleTraction);
-		recordButton.onClick.AddListener(ToggleRecording);
-		toggleViewButton.onClick.AddListener(ToggleView);
-		toggleViewButton2.onClick.AddListener(ToggleView);
-		mainMenuButton.onClick.AddListener(ShowMainMenuWindow);
-		yesMainMenu.onClick.AddListener(GoToMainMenu);
-		noMainMenu.onClick.AddListener(HideMainMenuWindow);
+		if(selfDriving != null) selfDriving.isOn = false;
+        if(plantButton != null) plantButton.onClick.AddListener(TogglePlanting);
+		if(tractionButton != null) tractionButton.onClick.AddListener(ToggleTraction);
+		if(recordButton != null) recordButton.onClick.AddListener(ToggleRecording);
+		if(toggleViewButton != null) toggleViewButton.onClick.AddListener(ToggleView);
+		if(toggleViewButton2 != null) toggleViewButton2.onClick.AddListener(ToggleView);
+		if(mainMenuButton != null) mainMenuButton.onClick.AddListener(ShowMainMenuWindow);
+		if(yesMainMenu != null) yesMainMenu.onClick.AddListener(GoToMainMenu);
+		if(noMainMenu != null) noMainMenu.onClick.AddListener(HideMainMenuWindow);
 		
-		tractionDropdown.onValueChanged.AddListener(delegate {
-            TractionDropdownValueChanged(tractionDropdown);
-        });
+		if(tractionDropdown != null) {
+			tractionDropdown.onValueChanged.AddListener(delegate {
+	            TractionDropdownValueChanged(tractionDropdown);
+	        });
+		}
     }
 
     // Update is called once per frame
     void Update()
     {
-        if(PathMaker.Instance.rover != null) {
-			frictionDisplay.text = "Friction: " + PathMaker.Instance.rover.currentFriction;
-			PathMaker.Instance.rover.selfDriving = selfDriving.isOn;
-			PathMaker.Instance.rover.scienceQA = scienceQA.isOn;
+        if(PathMaker.Instance != null && PathMaker.Instance.rover != null) {
+			if(frictionDisplay != null) frictionDisplay.text = "Friction: " + PathMaker.Instance.rover.currentFriction;
+			if(selfDriving != null) PathMaker.Instance.rover.selfDriving = selfDriving.isOn;
+			if(scienceQA != null) PathMaker.Instance.rover.scienceQA = scienceQA.isOn;
 		}
 		
-		if(PathMaker.Instance.humanoidRobot) {
-			frictionDisplay.text = "Friction: " + PathMaker.Instance.humanoidRobot.currentFriction;
+		if(PathMaker.Instance != null && PathMaker.Instance.humanoidRobot) {
+			if(frictionDisplay != null) frictionDisplay.text = "Friction: " + PathMaker.Instance.humanoidRobot.currentFriction;
 			if(selfDriving) {			
 				PathMaker.Instance.humanoidRobot.selfDriving = selfDriving.isOn;
 			}
 		}
 		
-		if(timeSinceRecordingStarted >= 5) {
+		if(timeSinceRecordingStarted >= 5 && recordingNotification != null) {
 			recordingNotification.SetActive(false);
 		}
 		//timeSinceRecordingStarted += Time.deltaTime;
@@ -69,88 +71,108 @@ public class RoverControls : MonoBehaviour
 	
 	public void TractionDropdownValueChanged(TMP_Dropdown d) {
 		
-		PathMaker.Instance.manip.UpdatePlacer(d.value);
+		if(PathMaker.Instance != null && PathMaker.Instance.manip != null && d != null) {
+			PathMaker.Instance.manip.UpdatePlacer(d.value);
+		}
 		
 	}
 	
 	private void TogglePlanting() {
+		if(PathMaker.Instance == null || PathMaker.Instance.manip == null || PathMaker.Instance.mainCam == null) return;
 
-		if(tractionMenu.activeSelf) {
+		if(tractionMenu != null && tractionMenu.activeSelf) {
 			ToggleTraction();
 		}
 
-		if(plantMenu.activeSelf) {
+		if(plantMenu != null && plantMenu.activeSelf) {
 			plantMenu.SetActive(false);
 			PathMaker.Instance.manip.placingPlot = false;
 			PathMaker.Instance.manip.EndEditMode();
 		}
-		else {
+		else if(plantMenu != null) {
 			plantMenu.SetActive(true);
 			PathMaker.Instance.manip.placingPlot = true;
 			PathMaker.Instance.mainCam.mode = 2;
-			PathMaker.Instance.placeCamOrg.transform.position = PathMaker.Instance.mainCam.focusedRobot.transform.position + new Vector3(0,15,0);
+			if(PathMaker.Instance.placeCamOrg != null && PathMaker.Instance.mainCam.focusedRobot != null) {
+				PathMaker.Instance.placeCamOrg.transform.position = PathMaker.Instance.mainCam.focusedRobot.transform.position + new Vector3(0,15,0);
+			}
 		}
 	}
 	
 	private void ToggleTraction() {
+		if(PathMaker.Instance == null || PathMaker.Instance.manip == null || PathMaker.Instance.mainCam == null) return;
 
-		if(plantMenu.activeSelf) {
+		if(plantMenu != null && plantMenu.activeSelf) {
 			TogglePlanting();
 		}
 		
-		if(tractionMenu.activeSelf) {
+		if(tractionMenu != null && tractionMenu.activeSelf) {
 			tractionMenu.SetActive(false);
 			PathMaker.Instance.manip.EndEditMode();
 		}
-		else {
+		else if(tractionMenu != null) {
 			tractionMenu.SetActive(true);
 			PathMaker.Instance.manip.UpdatePlacer(0);
 			PathMaker.Instance.manip.placingTraction = true;
 			PathMaker.Instance.mainCam.mode = 2;
-			PathMaker.Instance.placeCamOrg.transform.position = PathMaker.Instance.mainCam.focusedRobot.transform.position + new Vector3(0,15,0);
+			if(PathMaker.Instance.placeCamOrg != null && PathMaker.Instance.mainCam.focusedRobot != null) {
+				PathMaker.Instance.placeCamOrg.transform.position = PathMaker.Instance.mainCam.focusedRobot.transform.position + new Vector3(0,15,0);
+			}
 		}
 		
 	}
 	
 	private void ToggleRecording() {
+		if(PathMaker.Instance == null || PathMaker.Instance.rover == null) return;
+
 		if(PathMaker.Instance.rover.recording) {
 			PathMaker.Instance.rover.StopRecording();
-			recordButton.transform.GetChild(0).GetComponent<TMP_Text>().text = "Start Recording";
-			recordingNotification.SetActive(false);
+			SetButtonText(recordButton, "Start Recording");
+			if(recordingNotification != null) recordingNotification.SetActive(false);
 		}
 		else {
 			
 			
 			PathMaker.Instance.rover.StartRecording();
 			timeSinceRecordingStarted = 0f;
-			recordingNotification.SetActive(true);
+			if(recordingNotification != null) recordingNotification.SetActive(true);
 			string s = "Recording to: " + Application.dataPath + "/Recordings/" + PathMaker.Instance.rover.curRecordDir;
 			Debug.Log(s);
-			recordingNotification.GetComponent<TMP_Text>().text = s;
-			recordButton.transform.GetChild(0).GetComponent<TMP_Text>().text = "Stop Recording";
+			if(recordingNotification != null && recordingNotification.GetComponent<TMP_Text>() != null) {
+				recordingNotification.GetComponent<TMP_Text>().text = s;
+			}
+			SetButtonText(recordButton, "Stop Recording");
 		}
 	}
 	
 	private void ToggleView() {
-		PathMaker.Instance.manip.ToggleView();
+		if(PathMaker.Instance != null && PathMaker.Instance.manip != null) {
+			PathMaker.Instance.manip.ToggleView();
+		}
 	}
 	
 	private void GoToMainMenu() {
 		
-		confirmMainMenuWindow.SetActive(false);
-		PathMaker.Instance.GoToMainMenu();
+		if(confirmMainMenuWindow != null) confirmMainMenuWindow.SetActive(false);
+		if(PathMaker.Instance != null) PathMaker.Instance.GoToMainMenu();
 		
 	}
 	
 	private void ShowMainMenuWindow() {
 		
-		confirmMainMenuWindow.SetActive(true);
+		if(confirmMainMenuWindow != null) confirmMainMenuWindow.SetActive(true);
 		
 	}
 	private void HideMainMenuWindow() {
 		
-		confirmMainMenuWindow.SetActive(false);
+		if(confirmMainMenuWindow != null) confirmMainMenuWindow.SetActive(false);
 		
+	}
+
+	private void SetButtonText(Button button, string text) {
+		if(button == null || button.transform.childCount == 0) return;
+		TMP_Text label = button.transform.GetChild(0).GetComponent<TMP_Text>();
+		if(label != null) label.text = text;
 	}
 	
 }

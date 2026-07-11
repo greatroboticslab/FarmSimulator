@@ -100,9 +100,13 @@ public static class FarmTerrainBuilder
 
 			terrain.terrainData = data;
 			terrain.materialTemplate = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Terrain-Standard.mat");
-			terrain.drawInstanced = true;
+			//instanced terrain rendering breaks texture-billboard grass details
+			terrain.drawInstanced = false;
 			terrain.heightmapPixelError = 6f;
 			terrain.basemapDistance = 600f;
+			terrain.detailObjectDistance = 140f;
+			terrain.detailObjectDensity = 1f;
+			terrain.drawTreesAndFoliage = true;
 
 			TerrainCollider col = terrainGO.GetComponent<TerrainCollider>();
 			if (col == null) col = terrainGO.AddComponent<TerrainCollider>();
@@ -226,6 +230,72 @@ public static class FarmTerrainBuilder
 		}
 		data.SetAlphamaps(0, 0, alpha);
 
+		//---- waving detail grass (instanced mesh tufts; texture billboards do not
+		//render reliably on 2022 terrains) ----
+		GameObject greenTuft = EnsureTuftPrefab("GrassTuft", "GrassBlades");
+		GameObject dryTuftGO = EnsureTuftPrefab("DryTuft", "DryBlades");
+		if (greenTuft != null && dryTuftGO != null)
+		{
+			DetailPrototype green = new DetailPrototype
+			{
+				usePrototypeMesh = true,
+				prototype = greenTuft,
+				renderMode = DetailRenderMode.VertexLit,
+				useInstancing = true,
+				minWidth = 0.9f, maxWidth = 1.8f,
+				minHeight = 0.6f, maxHeight = 1.2f,
+				noiseSpread = 0.25f
+			};
+			DetailPrototype dryTuft = new DetailPrototype
+			{
+				usePrototypeMesh = true,
+				prototype = dryTuftGO,
+				renderMode = DetailRenderMode.VertexLit,
+				useInstancing = true,
+				minWidth = 0.8f, maxWidth = 1.5f,
+				minHeight = 0.45f, maxHeight = 0.9f,
+				noiseSpread = 0.35f
+			};
+			data.detailPrototypes = new DetailPrototype[] { green, dryTuft };
+
+			const int DetailRes = 512;
+			data.SetDetailResolution(DetailRes, 32);
+			//2022+ defaults to coverage-based scatter where small values mean near-zero
+			//coverage; instance count mode treats values as tufts per cell
+			data.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
+			int[,] greenMap = new int[DetailRes, DetailRes];
+			int[,] dryMap = new int[DetailRes, DetailRes];
+			for (int y = 0; y < DetailRes; y++)
+			{
+				for (int x = 0; x < DetailRes; x++)
+				{
+					float u = x / (float)(DetailRes - 1);
+					float v = y / (float)(DetailRes - 1);
+					float wx = (u - 0.5f) * TerrainSize;
+					float wz = (v - 0.5f) * TerrainSize;
+
+					//keep the road, spawn pad, and soil plots clear
+					float centerDist = Mathf.Sqrt(wx * wx + wz * wz);
+					bool onRoad = wx > -6f && Mathf.Abs(wz) < 6f;
+					bool onPad = centerDist < 17f;
+					bool onPlot = IsInPlot(wx, wz, 25f, -70f, 85f, -10f) || IsInPlot(wx, wz, 25f, 12f, 85f, 72f);
+					if (onRoad || onPad || onPlot) continue;
+
+					float n = Mathf.PerlinNoise(ox + u * 9f, oy + v * 9f);
+					float n2 = Mathf.PerlinNoise(ox + 40f + u * 25f, oy + 40f + v * 25f);
+					if (n > 0.30f) greenMap[y, x] = Mathf.Clamp(1 + Mathf.RoundToInt((n - 0.30f) * 30f * n2), 0, 12);
+					if (n < 0.45f) dryMap[y, x] = Mathf.Clamp(Mathf.RoundToInt((0.45f - n) * 20f * n2), 0, 8);
+				}
+			}
+			data.SetDetailLayer(0, 0, 0, greenMap);
+			data.SetDetailLayer(0, 0, 1, dryMap);
+
+			data.wavingGrassSpeed = 0.45f;
+			data.wavingGrassAmount = 0.35f;
+			data.wavingGrassStrength = 0.5f;
+			data.wavingGrassTint = new Color(0.85f, 0.85f, 0.75f);
+		}
+
 		if (created) AssetDatabase.CreateAsset(data, path);
 		EditorUtility.SetDirty(data);
 		return data;
@@ -235,5 +305,67 @@ public static class FarmTerrainBuilder
 	static bool IsInPlot(float wx, float wz, float x0, float z0, float x1, float z1)
 	{
 		return wx >= x0 && wx <= x1 && wz >= z0 && wz <= z1;
+	}
+
+	//Creates (once) a crossed-quads tuft mesh + cutout material + prefab for terrain details
+	static GameObject EnsureTuftPrefab(string name, string texture)
+	{
+		string prefabPath = "Assets/Terrain/" + name + ".prefab";
+		GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+		if (existing != null)
+		{
+			//instanced terrain details silently draw nothing without this flag
+			Material m = AssetDatabase.LoadAssetAtPath<Material>("Assets/Terrain/" + name + "Mat.mat");
+			if (m != null && !m.enableInstancing) { m.enableInstancing = true; EditorUtility.SetDirty(m); }
+			return existing;
+		}
+
+		Texture2D tex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/" + texture + ".png");
+		if (tex == null) return null;
+
+		//two crossed quads, 1m tall, pivot at ground
+		Mesh mesh = new Mesh { name = name + "Mesh" };
+		Vector3[] verts = new Vector3[8];
+		Vector2[] uvs = new Vector2[8];
+		int[] tris = new int[24];
+		for (int q = 0; q < 2; q++)
+		{
+			float a = q * Mathf.PI * 0.5f;
+			Vector3 dir = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.5f;
+			int b = q * 4;
+			verts[b + 0] = -dir; verts[b + 1] = dir;
+			verts[b + 2] = dir + Vector3.up; verts[b + 3] = -dir + Vector3.up;
+			uvs[b + 0] = new Vector2(0, 0); uvs[b + 1] = new Vector2(1, 0);
+			uvs[b + 2] = new Vector2(1, 1); uvs[b + 3] = new Vector2(0, 1);
+			int t = q * 12;
+			tris[t + 0] = b; tris[t + 1] = b + 2; tris[t + 2] = b + 1;
+			tris[t + 3] = b; tris[t + 4] = b + 3; tris[t + 5] = b + 2;
+			//back faces
+			tris[t + 6] = b; tris[t + 7] = b + 1; tris[t + 8] = b + 2;
+			tris[t + 9] = b; tris[t + 10] = b + 2; tris[t + 11] = b + 3;
+		}
+		mesh.vertices = verts;
+		mesh.uv = uvs;
+		mesh.triangles = tris;
+		//up-facing normals so the tufts take the terrain's soft lighting instead
+		//of going black from side-facing quad normals
+		Vector3[] normals = new Vector3[8];
+		for (int i = 0; i < 8; i++) normals[i] = Vector3.up;
+		mesh.normals = normals;
+		mesh.RecalculateBounds();
+		AssetDatabase.CreateAsset(mesh, "Assets/Terrain/" + name + "Mesh.asset");
+
+		Material mat = new Material(Shader.Find("Legacy Shaders/Transparent/Cutout/Diffuse"));
+		mat.mainTexture = tex;
+		mat.SetFloat("_Cutoff", 0.45f);
+		mat.enableInstancing = true;
+		AssetDatabase.CreateAsset(mat, "Assets/Terrain/" + name + "Mat.mat");
+
+		GameObject go = new GameObject(name);
+		go.AddComponent<MeshFilter>().sharedMesh = mesh;
+		go.AddComponent<MeshRenderer>().sharedMaterial = mat;
+		GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
+		Object.DestroyImmediate(go);
+		return prefab;
 	}
 }

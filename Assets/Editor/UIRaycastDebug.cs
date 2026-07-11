@@ -115,6 +115,24 @@ public static class UIRaycastDebug
 			+ " | " + spawnInfo);
 	}
 
+	[MenuItem("Tools/Debug Terrain Details")]
+	public static void TerrainDetails()
+	{
+		Terrain t = Object.FindObjectOfType<Terrain>();
+		if (t == null || t.terrainData == null) { Debug.Log("TerrainDetails: no terrain in scene."); return; }
+		TerrainData d = t.terrainData;
+		int sum = 0;
+		if (d.detailPrototypes.Length > 0)
+		{
+			int[,] layer = d.GetDetailLayer(0, 0, d.detailResolution, d.detailResolution, 0);
+			foreach (int v in layer) sum += v;
+		}
+		Debug.Log("TerrainDetails: terrain=" + t.name + " prototypes=" + d.detailPrototypes.Length
+			+ " detailRes=" + d.detailResolution + " layer0Sum=" + sum
+			+ " drawFoliage=" + t.drawTreesAndFoliage + " detailDist=" + t.detailObjectDistance
+			+ " density=" + t.detailObjectDensity + " qualityDensityScale=" + QualitySettings.terrainDetailDensityScale);
+	}
+
 	[MenuItem("Tools/Simulate Chat Submit")]
 	public static void SimulateSubmit()
 	{

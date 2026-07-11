@@ -112,11 +112,23 @@ public class PathMaker : MonoBehaviour
 		if(menu != null && menu.robotGroups.Count > 0 && menu.robotGroups[0].robotPrefabs.Count > 0 && menu.robotGroups[0].robotPrefabs[0] != null) {
 			Instance.selectedRobot = menu.robotGroups[0].robotPrefabs[0].GetComponent<RobotInfo>();
 		}
+
+		//Default to the first crop so plots planted before opening the crop
+		//menu still grow something instead of silently placing nothing
+		if(selectedCrop == null && cropList != null && cropList.Count > 0) {
+			selectedCrop = cropList[0];
+			selectedCropId = 0;
+		}
     }
 	
 	public Waypoint GetNextWaypoint(Vector3 pos) {
+		//No work left: returning null lets the robots idle instead of chasing
+		//a fake waypoint at their own position every frame
 		if(waypoints == null || waypoints.Count == 0) {
-			return new Waypoint { pos = new Vector2(pos.x, pos.z) };
+			if(currentWayPointObj != null) {
+				Destroy(currentWayPointObj);
+			}
+			return null;
 		}
 		Vector2 pos2 = new Vector2(pos.x,pos.z);
 		int least = 0;

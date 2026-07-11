@@ -483,14 +483,18 @@ public class DebugRover : MonoBehaviour
 					
 					//Reached Waypoint
 					if(reached) {
-						Debug.Log("[DebugRover] Waypoint reached at " + currentWaypoint.pos + ". Getting next waypoint.");
 						if(currentWaypoint.checkWater) {
 							TestPlant();
 						}
-						if(currentWaypoint.pickFruit) {
+						if(currentWaypoint.pickFruit && robotArm != null && currentWaypoint.plant != null) {
 							robotArm.HarvestCrop(currentWaypoint.plant.GetComponent<Plant>());
 						}
 						currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
+						if(currentWaypoint == null) {
+							Debug.Log("[DebugRover] All waypoints completed.");
+							forwardInput = 0;
+							turnInput = 0;
+						}
 					}
 					
 					

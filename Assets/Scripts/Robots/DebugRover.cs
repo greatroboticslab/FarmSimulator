@@ -623,6 +623,14 @@ public class DebugRover : MonoBehaviour
 		
 		PathMaker.Instance.rover = this;
 		PathMaker.Instance.currentRobot = gameObject;
+
+		//every rover gets crop detection with a visible targeting laser
+		if (GetComponent<CropDetector>() == null)
+		{
+			CropDetector detector = gameObject.AddComponent<CropDetector>();
+			//UV robot lases in violet to match its sterilizing light
+			if (robotType == 1) detector.laserColor = new Color(0.75f, 0.25f, 1f);
+		}
 		
 		if(mqNode != null) {
 			mqNode.PublishInfo(forwardInput, turnInput, lightOn);

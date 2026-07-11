@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class Plant : MonoBehaviour
 {
+	//registry of live plants so robots can detect crops without physics queries
+	public static readonly List<Plant> All = new List<Plant>();
+
+	void OnEnable() { All.Add(this); }
+	void OnDisable() { All.Remove(this); }
 
 	public GameObject visibleMesh;
 	private bool wayPointAdded;

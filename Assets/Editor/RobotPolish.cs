@@ -22,6 +22,49 @@ public static class RobotPolish
 		new Spec("Assets/Materials/HumanoidGrey.mat", 0.55f, 0.60f),
 	};
 
+	//Materials that get the world-projected wear detail (bodies and frames;
+	//wheels/hoses/humanoids keep plain Standard)
+	static readonly string[] TriplanarTargets =
+	{
+		"Assets/Materials/Aluminium.mat",
+		"Assets/Materials/JaguarMetal.mat",
+		"Assets/Materials/JaguarBody.mat",
+		"Assets/Materials/LampRover.mat",
+		"Assets/Materials/LongRover.mat",
+		"Assets/Materials/Test1.mat",
+	};
+
+	[MenuItem("Tools/Apply Triplanar Robot Detail")]
+	public static void ApplyTriplanar()
+	{
+		Shader tri = Shader.Find("FarmSim/TriplanarMetal");
+		Texture2D detail = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/MetalDetail.png");
+		if (tri == null || detail == null) { Debug.LogError("RobotPolish: triplanar shader or MetalDetail.png missing."); return; }
+
+		int changed = 0;
+		foreach (string path in TriplanarTargets)
+		{
+			Material m = AssetDatabase.LoadAssetAtPath<Material>(path);
+			if (m == null) { Debug.LogWarning("RobotPolish: missing " + path); continue; }
+
+			Color col = m.HasProperty("_Color") ? m.color : Color.white;
+			float metallic = m.HasProperty("_Metallic") ? m.GetFloat("_Metallic") : 0.4f;
+			float gloss = m.HasProperty("_Glossiness") ? m.GetFloat("_Glossiness") : 0.5f;
+
+			m.shader = tri;
+			m.color = col;
+			m.SetTexture("_DetailTex", detail);
+			m.SetFloat("_DetailScale", 0.6f);
+			m.SetFloat("_DetailStrength", 0.45f);
+			m.SetFloat("_Metallic", metallic);
+			m.SetFloat("_Glossiness", gloss);
+			EditorUtility.SetDirty(m);
+			changed++;
+		}
+		AssetDatabase.SaveAssets();
+		Debug.Log("RobotPolish: applied triplanar detail to " + changed + " materials.");
+	}
+
 	[MenuItem("Tools/Improve Robot Materials")]
 	public static void Improve()
 	{

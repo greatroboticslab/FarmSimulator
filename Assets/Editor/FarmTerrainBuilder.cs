@@ -100,12 +100,13 @@ public static class FarmTerrainBuilder
 
 			terrain.terrainData = data;
 			terrain.materialTemplate = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Terrain-Standard.mat");
-			//instanced terrain rendering breaks texture-billboard grass details
-			terrain.drawInstanced = false;
-			terrain.heightmapPixelError = 6f;
-			terrain.basemapDistance = 600f;
-			terrain.detailObjectDistance = 140f;
-			terrain.detailObjectDensity = 1f;
+			//instanced rendering is fine with mesh-based details (only texture
+			//billboards were incompatible) and much cheaper on the CPU
+			terrain.drawInstanced = true;
+			terrain.heightmapPixelError = 12f;
+			terrain.basemapDistance = 300f;
+			terrain.detailObjectDistance = 70f;
+			terrain.detailObjectDensity = 0.7f;
 			terrain.drawTreesAndFoliage = true;
 
 			TerrainCollider col = terrainGO.GetComponent<TerrainCollider>();
@@ -283,8 +284,9 @@ public static class FarmTerrainBuilder
 
 					float n = Mathf.PerlinNoise(ox + u * 9f, oy + v * 9f);
 					float n2 = Mathf.PerlinNoise(ox + 40f + u * 25f, oy + 40f + v * 25f);
-					if (n > 0.30f) greenMap[y, x] = Mathf.Clamp(1 + Mathf.RoundToInt((n - 0.30f) * 30f * n2), 0, 12);
-					if (n < 0.45f) dryMap[y, x] = Mathf.Clamp(Mathf.RoundToInt((0.45f - n) * 20f * n2), 0, 8);
+					//kept moderate: dense grass is the single biggest perf cost on weak GPUs
+					if (n > 0.36f) greenMap[y, x] = Mathf.Clamp(1 + Mathf.RoundToInt((n - 0.36f) * 18f * n2), 0, 6);
+					if (n < 0.42f) dryMap[y, x] = Mathf.Clamp(Mathf.RoundToInt((0.42f - n) * 12f * n2), 0, 4);
 				}
 			}
 			data.SetDetailLayer(0, 0, 0, greenMap);

@@ -58,7 +58,7 @@ public static class ScenePolish
 		RenderSettings.ambientEquatorColor = new Color(0.55f, 0.58f, 0.52f);
 		RenderSettings.ambientGroundColor = new Color(0.34f, 0.32f, 0.27f);
 
-		QualitySettings.shadowDistance = 170f;
+		QualitySettings.shadowDistance = 90f;
 
 		EditorSceneManager.MarkAllScenesDirty();
 		EditorSceneManager.SaveOpenScenes();

@@ -45,8 +45,9 @@ public class RoverControls : MonoBehaviour
 	        });
 		}
 
-		//Tutorial button joins the right-side panel, cloned so it matches the others
+		//Tutorial and Graphics buttons join the right-side panel, cloned to match
 		TutorialBook.AttachHudButton(mainMenuButton);
+		GraphicsSettings.AttachHudButton(mainMenuButton);
     }
 
     // Update is called once per frame

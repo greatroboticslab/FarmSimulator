@@ -148,6 +148,9 @@ public class CoordSelector : MonoBehaviour
 
 		//first farm visit each session opens the manual
 		TutorialBook.ShowFirstTime();
+
+		//the farm's terrain only exists now, so push quality-based grass limits onto it
+		GraphicsSettings.ApplyTerrainCost();
 		
 		if(PathMaker.Instance.posDisplay != null) {
 			PathMaker.Instance.posDisplay.gameObject.SetActive(true);

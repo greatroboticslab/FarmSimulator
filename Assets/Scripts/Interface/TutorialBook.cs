@@ -64,7 +64,10 @@ public class TutorialBook : MonoBehaviour
 			"Flip Robot - rights your robot if it rolls over\n" +
 			"Edit Traction - paint slippery or muddy zones on the field to test rough terrain\n" +
 			"Main Menu (Exit) - back to the robot select screen\n" +
-			"Tutorial - reopens this manual"),
+			"Tutorial - reopens this manual\n" +
+			"Graphics - cycles quality from Very Low to Ultra; drop it if the game " +
+			"runs slowly, raise it if your machine can spare the power. Your choice " +
+			"is remembered next time you play."),
 
 		new Page("Rovers: Cutting and UV",
 			"Cutting Robot and Cutting Robot 2 hunt weeds. Their detectors prefer weeds " +

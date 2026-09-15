@@ -58,6 +58,10 @@ public class PlantZone : MonoBehaviour
         float y = transform.localScale.y;
         float z = transform.localScale.z;
         
+        //some crop models are hundreds of thousands of triangles each; thin
+        //the grid so one plot stays inside the graphics tier's budget
+        ApplyTriangleBudget(x, z);
+
         float max_x = xDensity*x;
         float max_y = yDensity*z;
 		
@@ -67,15 +71,24 @@ public class PlantZone : MonoBehaviour
 		//Place human
 		RaycastHit h_hit;
         Vector3 h_startPos = transform.position + new Vector3(x*1.1f,0,z*-1.1f);
-        if (Physics.Raycast(h_startPos, transform.TransformDirection(-Vector3.up), out h_hit, Mathf.Infinity))
+        if (Physics.Raycast(h_startPos, transform.TransformDirection(-Vector3.up), out h_hit, RayLength))
         {
 
 			if(PathMaker.Instance.plotHuman != null) {
 	            GameObject newHuman = Instantiate(PathMaker.Instance.plotHuman);
 			    newHuman.transform.position = h_hit.point;
+				//a bystander standing in a field does not need its skeleton
+				//evaluated while it is off screen
+				foreach(Animator a in newHuman.GetComponentsInChildren<Animator>(true)) {
+					a.cullingMode = AnimatorCullingMode.CullCompletely;
+				}
 			}
 
-			if(PathMaker.Instance.humanoidRobotPrefab != null) {
+			//one companion is enough: this spawned a fresh 30-body ragdoll for
+			//every plot, and replaced the player's own humanoid reference when
+			//the player was controlling one
+			if(PathMaker.Instance.humanoidRobotPrefab != null && !PathMaker.Instance.humanoid
+			   && PathMaker.Instance.humanoidRobot == null) {
 				GameObject newHumanoidRobot = Instantiate(PathMaker.Instance.humanoidRobotPrefab);
 				newHumanoidRobot.transform.position = h_hit.point + new Vector3(1.5f, 0, 0);
 				HumanoidRobot spawnedHR = newHumanoidRobot.GetComponent<HumanoidRobot>();
@@ -100,7 +113,7 @@ public class PlantZone : MonoBehaviour
 			y/2 + transform.position.y,
 			Random.Range(transform.position.z-z,transform.position.z+(z))
 			);
-			if (Physics.Raycast(startPos, transform.TransformDirection(-Vector3.up), out hit, Mathf.Infinity))
+			if (Physics.Raycast(startPos, transform.TransformDirection(-Vector3.up), out hit, RayLength))
 			{
 				if(weed != null) {
 				    GameObject newWeed = Instantiate(weed);
@@ -133,7 +146,7 @@ public class PlantZone : MonoBehaviour
 					Vector3 startPos = new Vector3(_x/xDensity, y/2,(_y/yDensity));
 					
 					//Place Plant
-					if (Physics.Raycast(startPos+transform.position, transform.TransformDirection(-Vector3.up), out hit, Mathf.Infinity))
+					if (Physics.Raycast(startPos+transform.position, transform.TransformDirection(-Vector3.up), out hit, RayLength))
 					{
 						GameObject newPlant = Instantiate(plant);
 						newPlant.transform.parent = prefabOutput;
@@ -237,7 +250,7 @@ public class PlantZone : MonoBehaviour
 					Vector3 startPos = new Vector3(_inc*_x/xDensity, y/2,(_y/yDensity));
 					
 					//MoveWaypoint
-					if (Physics.Raycast(startPos+transform.position + new Vector3(0,0,1), transform.TransformDirection(-Vector3.up), out hit, Mathf.Infinity))
+					if (Physics.Raycast(startPos+transform.position + new Vector3(0,0,1), transform.TransformDirection(-Vector3.up), out hit, RayLength))
 					{
 						Vector2 plantPoint = new Vector2(hit.point.x, hit.point.z);
 						wp = new PathMaker.Waypoint();
@@ -248,7 +261,7 @@ public class PlantZone : MonoBehaviour
 					}
 					
 					//AimWaypoint
-					if (Physics.Raycast(startPos+transform.position, transform.TransformDirection(-Vector3.up), out hit, Mathf.Infinity))
+					if (Physics.Raycast(startPos+transform.position, transform.TransformDirection(-Vector3.up), out hit, RayLength))
 					{
 						GameObject newPlant = Instantiate(plant);
 						newPlant.transform.parent = prefabOutput;
@@ -273,7 +286,7 @@ public class PlantZone : MonoBehaviour
 					Vector3 startPos = new Vector3(_inc*_x/xDensity, y/2,(_y/yDensity));
 					
 					//MoveWaypoint
-					if (Physics.Raycast(startPos+transform.position + new Vector3(0,0,0.8f), transform.TransformDirection(-Vector3.up), out hit, Mathf.Infinity))
+					if (Physics.Raycast(startPos+transform.position + new Vector3(0,0,0.8f), transform.TransformDirection(-Vector3.up), out hit, RayLength))
 					{
 						Vector2 plantPoint = new Vector2(hit.point.x, hit.point.z);
 						wp = new PathMaker.Waypoint();
@@ -284,7 +297,7 @@ public class PlantZone : MonoBehaviour
 					}
 					
 					//AimWaypoint
-					if (Physics.Raycast(startPos+transform.position, transform.TransformDirection(-Vector3.up), out hit, Mathf.Infinity))
+					if (Physics.Raycast(startPos+transform.position, transform.TransformDirection(-Vector3.up), out hit, RayLength))
 					{
 						GameObject newPlant = Instantiate(plant);
 						newPlant.transform.parent = prefabOutput;
@@ -303,7 +316,7 @@ public class PlantZone : MonoBehaviour
 				
 				RaycastHit _hit;
 				Vector3 tPos = new Vector3((_inc*endX/xDensity) + _inc*3f, y/2,((_y+0.5f)/yDensity));
-				if (Physics.Raycast(tPos+transform.position + new Vector3(0,0,0.8f), transform.TransformDirection(-Vector3.up), out _hit, Mathf.Infinity))
+				if (Physics.Raycast(tPos+transform.position + new Vector3(0,0,0.8f), transform.TransformDirection(-Vector3.up), out _hit, RayLength))
 				{
 					Vector2 plantPoint = new Vector2(_hit.point.x, _hit.point.z);
 					wp = new PathMaker.Waypoint();
@@ -319,5 +332,89 @@ public class PlantZone : MonoBehaviour
         }
         
     }
+
+
+	//---- cost control -------------------------------------------------------
+
+	//The plot is placed 500 m above the ground, so rays never need to be infinite
+	const float RayLength = 2000f;
+
+	//Triangles one plot may add, indexed by quality level; 0 means no limit
+	static readonly int[] PlotTriangleBudget = { 1500000, 3000000, 6000000, 20000000, 60000000, 0 };
+	const int MinPlants = 16;
+
+	//Reduces row and column density until the plot fits the tier's budget. The
+	//plot keeps its size and shape; the plants in it are just spaced further apart.
+	void ApplyTriangleBudget(float halfX, float halfZ) {
+		int level = Mathf.Clamp(QualitySettings.GetQualityLevel(), 0, PlotTriangleBudget.Length - 1);
+		int budget = PlotTriangleBudget[level];
+		if(budget <= 0) return;
+
+		int perPlant = EstimateTriangles(plant);
+		if(perPlant <= 0) return;
+
+		float plants = 4f * xDensity * yDensity * halfX * halfZ;
+		float allowed = Mathf.Max(MinPlants, budget / (float)perPlant);
+		if(plants <= allowed) return;
+
+		float scale = Mathf.Sqrt(allowed / plants);
+		xDensity *= scale;
+		yDensity *= scale;
+		rOffset = new Vector2(0,(1f/yDensity)/2);
+		Debug.LogWarning("PlantZone: " + plant.name + " is " + perPlant + " triangles per plant, so this plot was thinned from "
+			+ Mathf.RoundToInt(plants) + " to about " + Mathf.RoundToInt(allowed) + " plants for the "
+			+ QualitySettings.names[level] + " graphics setting. Raise the Graphics setting for a denser field.");
+	}
+
+	//Triangles one instance draws: everything active, plus the largest growth
+	//stage (a plant enables exactly one of them at random when it starts)
+	public static int EstimateTriangles(GameObject prefab) {
+		if(prefab == null) return 0;
+
+		List<Transform> stages = new List<Transform>();
+		int biggestStage = 0;
+		Plant p = prefab.GetComponent<Plant>();
+		if(p != null && p.growthStages != null) {
+			foreach(GameObject g in p.growthStages) {
+				if(g == null) continue;
+				stages.Add(g.transform);
+				biggestStage = Mathf.Max(biggestStage, CountTriangles(g.transform, null));
+			}
+		}
+		return CountTriangles(prefab.transform, stages) + biggestStage;
+	}
+
+	static int CountTriangles(Transform root, List<Transform> skip) {
+		int total = 0;
+		foreach(MeshFilter mf in root.GetComponentsInChildren<MeshFilter>(true)) {
+			if(Skipped(mf.transform, root, skip)) continue;
+			total += MeshTriangles(mf.sharedMesh);
+		}
+		foreach(SkinnedMeshRenderer smr in root.GetComponentsInChildren<SkinnedMeshRenderer>(true)) {
+			if(Skipped(smr.transform, root, skip)) continue;
+			total += MeshTriangles(smr.sharedMesh);
+		}
+		return total;
+	}
+
+	//The prefab's own root may be inactive (crop menu entries can be inactive
+	//scene objects), but an inactive child really does stay hidden
+	static bool Skipped(Transform t, Transform root, List<Transform> skip) {
+		Transform cur = t;
+		while(cur != null) {
+			if(skip != null && skip.Contains(cur)) return true;
+			if(cur == root) return false;
+			if(!cur.gameObject.activeSelf) return true;
+			cur = cur.parent;
+		}
+		return false;
+	}
+
+	static int MeshTriangles(Mesh m) {
+		if(m == null) return 0;
+		int tris = 0;
+		for(int i = 0; i < m.subMeshCount; i++) tris += (int)(m.GetIndexCount(i) / 3);
+		return tris;
+	}
 
 }

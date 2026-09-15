@@ -60,6 +60,8 @@ The simulator picks a graphics tier for your machine the first time it runs: int
 
 Press **F3** to show a frame-rate overlay with CPU and GPU frame times, the current tier and render resolution, and the GPU name. The lower tiers cap the frame rate at 60 fps so laptops do not thermal-throttle; the game also drops to 10 fps while it is not the active window.
 
+Some crop models are very heavy: one scanned cucumber plant is over four hundred thousand triangles, so a full-density plot of them would be hundreds of millions. Each plot therefore has a triangle budget that follows the graphics tier, and a plot that would exceed it is planted with the same area but wider spacing. The console says so when it happens. Raise the Graphics setting for a denser field; Ultra has no limit.
+
 Command-line switches for support and testing:
 
     FarmSimulator.exe -quality 1              start on a given tier (0 = Very Low ... 5 = Ultra)

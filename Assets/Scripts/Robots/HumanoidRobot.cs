@@ -469,7 +469,10 @@ public class HumanoidRobot : MonoBehaviour
 		
 		//nn.output = new float[outputNodes];
 		
-		nn.input = GetInputs();
+		//vector inputs only: including the camera image here sized the first
+		//weight layer at 512*512*3 x 256 floats (about 800 MB per humanoid,
+		//built one Random.Range at a time). Camera data belongs in a sensor.
+		nn.input = GetInputs(false);
 		for(int i = 0; i < neuralNetwork.hiddenLayers.Count; i ++) {
 			NNLayer newLayer = new NNLayer();
 			int prevNodes = nn.input.Length;

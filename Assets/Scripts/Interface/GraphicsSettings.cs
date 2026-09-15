@@ -25,24 +25,29 @@ using TMPro;
 //   pass and writes benchmark.csv (see BenchmarkRoutine)
 public class GraphicsSettings : MonoBehaviour
 {
-	const string PrefKey = "FarmSim_QualityLevel";
+	//deliberately not the key the old Graphics button used: the tiers mean
+	//different things now, and a level saved by the previous build would stop
+	//this one from ever detecting the machine
+	const string PrefKey = "FarmSim_QualityTier";
 	//0 = automatic for the tier, otherwise the render height in pixels
 	const string HeightPrefKey = "FarmSim_RenderHeight";
 
 	//---- per-tier table; index = quality level (Very Low, Low, Medium, High, Very High, Ultra)
 	static readonly int[]   RenderHeight   = { 540, 720, 900, 0, 0, 0 };          //0 = native
-	static readonly bool[]  PostFx         = { false, false, true, true, true, true };
+	static readonly bool[]  PostFx         = { false, false, false, true, true, true };
 	static readonly bool[]  BloomOn        = { false, false, false, true, true, true };
 	static readonly bool[]  HdrOn          = { false, false, false, true, true, true };
 	static readonly float[] ShadowDist     = { 0f, 40f, 70f, 120f, 140f, 170f };
 	static readonly float[] DetailDist     = { 0f, 30f, 60f, 100f, 120f, 140f };
 	static readonly float[] DetailDensity  = { 0f, 0.35f, 0.6f, 0.85f, 1f, 1f };
 	static readonly float[] PixelError     = { 24f, 16f, 12f, 8f, 6f, 5f };
-	static readonly float[] BasemapDist    = { 100f, 150f, 300f, 600f, 800f, 1000f };
+	//beyond this distance the terrain draws from one prebaked texture instead of
+	//blending four layers with their normal maps, which is most of its pixel cost
+	static readonly float[] BasemapDist    = { 40f, 60f, 150f, 400f, 800f, 1000f };
 	static readonly bool[]  TerrainShadows = { false, false, true, true, true, true };
 	static readonly float[] FarClip        = { 400f, 550f, 750f, 1000f, 1000f, 1000f };
 	static readonly int[]   TargetFps      = { 60, 60, 60, 0, 0, 0 };             //0 = vsync, uncapped
-	static readonly float[] PropFrac       = { 0.2f, 0.35f, 0.6f, 1f, 1f, 1f };
+	static readonly float[] PropFrac       = { 0.15f, 0.3f, 0.5f, 1f, 1f, 1f };
 	static readonly int[]   AnimatedProps  = { 0, 0, 12, 40, 60, 80 };
 	static readonly float[] PipFps         = { 5f, 8f, 12f, 30f, 60f, 0f };         //0 = every frame
 	static readonly float[] PipShadowDist  = { 0f, 0f, 20f, 60f, 100f, 170f };
@@ -154,34 +159,42 @@ public class GraphicsSettings : MonoBehaviour
 		if (name.Contains("basic render") || name.Contains("warp") || name.Contains("llvmpipe") || name.Contains("swiftshader") || name.Contains("software"))
 			return 0;
 
-		bool intel = vendor.Contains("intel") || name.Contains("intel");
-		bool amd = vendor.Contains("amd") || vendor.Contains("advanced micro") || vendor.Contains("ati") || name.Contains("radeon");
-		bool nvidia = vendor.Contains("nvidia") || name.Contains("geforce") || name.Contains("quadro") || name.Contains("rtx") || name.Contains("gtx");
+		//test NVIDIA first and match "ati" strictly: "NVIDIA Corporation" contains
+		//the letters a-t-i, which used to send every NVIDIA card down the AMD path
+		bool nvidia = vendor.Contains("nvidia") || name.Contains("nvidia") || name.Contains("geforce")
+			|| name.Contains("quadro") || name.Contains("rtx") || name.Contains("gtx");
+		bool intel = !nvidia && (vendor.Contains("intel") || name.Contains("intel"));
+		bool amd = !nvidia && !intel && (vendor.Contains("amd") || vendor.Contains("advanced micro")
+			|| vendor.StartsWith("ati") || name.Contains("radeon"));
 		bool arm = vendor.Contains("qualcomm") || name.Contains("adreno") || name.Contains("mali") || vendor.Contains("apple");
 
+		if (nvidia)
+		{
+			//MX laptop chips are barely faster than integrated graphics
+			if (System.Text.RegularExpressions.Regex.IsMatch(name, @"\bmx\s?\d{3}")) return 2;
+			return 3;
+		}
 		if (intel)
 		{
 			//discrete Arc cards carry a model number (A380, A770, B580); "Arc Graphics"
 			//without one is the Meteor Lake integrated part
 			if (System.Text.RegularExpressions.Regex.IsMatch(name, @"arc(\(tm\))?\s*[ab]\d{3}")) return 3;
 			if (name.Contains("arc")) return 2;
-			if (name.Contains("iris")) return 1;         //Iris Plus / Xe integrated
+			//"Iris Xe" on Windows, plain "Xe Graphics" under Mesa on Linux
+			if (name.Contains("iris") || name.Contains("xe graphics")) return 1;
 			return 0;                                    //UHD / HD Graphics integrated
 		}
 		if (amd)
 		{
-			//Windows names: "AMD Radeon(TM) Graphics", "AMD Radeon(TM) Vega 8 Graphics", "AMD Radeon 780M";
-			//Linux Mesa names carry the APU codename: "AMD Radeon Graphics (renoir, LLVM ...)"
-			bool integratedName = name.Contains("vega") || name.Contains("radeon graphics") || name.Contains("(tm) graphics")
-				|| name.EndsWith("graphics")
-				|| System.Text.RegularExpressions.Regex.IsMatch(name, @"radeon\s*\d{3}m\b")
+			//RDNA integrated parts are named by model (680M, 780M, 890M) and are far
+			//faster than the Vega-era ones, which usually report no model number at all:
+			//"AMD Radeon(TM) Graphics", "AMD Radeon(TM) Vega 8 Graphics", or under Mesa
+			//"AMD Radeon Graphics (renoir, LLVM ...)"
+			if (System.Text.RegularExpressions.Regex.IsMatch(name, @"radeon\s*\(?t?m?\)?\s*\d{3}m\b")) return 2;
+			bool integratedName = name.Contains("vega") || name.Contains("radeon graphics")
+				|| name.Contains("(tm) graphics") || name.EndsWith("graphics")
 				|| System.Text.RegularExpressions.Regex.IsMatch(name, @"raven|picasso|renoir|lucienne|cezanne|barcelo|rembrandt|phoenix|mendocino|van gogh|stoney|carrizo|bristol");
-			if (integratedName) return name.Contains("vega") || name.Contains("raven") || name.Contains("picasso") ? 1 : 2;
-			return 3;
-		}
-		if (nvidia)
-		{
-			if (System.Text.RegularExpressions.Regex.IsMatch(name, @"\bmx\s?\d{3}")) return 2;
+			if (integratedName) return 1;
 			return 3;
 		}
 		if (arm) return 1;
@@ -329,11 +342,14 @@ public class GraphicsSettings : MonoBehaviour
 		}
 
 		ApplyPostProcessing(level);
+		ApplySkybox(level);
 		ApplyResolution(level);
 
 		RobotCameraThrottle.fps = Pick(PipFps, level);
 		RobotCameraThrottle.shadowDistance = Pick(PipShadowDist, level);
 		RobotCameraThrottle.stripPostProcessing = level < 3;
+		RobotCameraThrottle.allowHdr = Pick(HdrOn, level);
+		RobotCameraThrottle.farClip = far;
 
 		if (instance != null) instance.AdoptRobotCameras();
 		RefreshLabel();
@@ -395,6 +411,36 @@ public class GraphicsSettings : MonoBehaviour
 			//targetFrameRate is ignored while vsync is on, so drop both
 			QualitySettings.vSyncCount = 0;
 			Application.targetFrameRate = 10;
+		}
+	}
+
+	static Material skyboxInstance;
+
+	//The procedural sky computes its sun disk per pixel behind everything else.
+	//Its cheap variant is close enough on the tiers that need the frames.
+	static void ApplySkybox(int level)
+	{
+		Material sky = RenderSettings.skybox;
+		if (sky == null) return;
+		if (skyboxInstance == null || sky != skyboxInstance)
+		{
+			//work on a copy: editing the shared material would change the asset on disk
+			skyboxInstance = new Material(sky);
+			RenderSettings.skybox = skyboxInstance;
+		}
+		if (!skyboxInstance.HasProperty("_SunDisk")) return;
+
+		bool simple = level < 3;
+		skyboxInstance.SetFloat("_SunDisk", simple ? 1f : 2f);
+		if (simple)
+		{
+			skyboxInstance.EnableKeyword("_SUNDISK_SIMPLE");
+			skyboxInstance.DisableKeyword("_SUNDISK_HIGH_QUALITY");
+		}
+		else
+		{
+			skyboxInstance.EnableKeyword("_SUNDISK_HIGH_QUALITY");
+			skyboxInstance.DisableKeyword("_SUNDISK_SIMPLE");
 		}
 	}
 
@@ -566,12 +612,19 @@ public class GraphicsSettings : MonoBehaviour
 			if (crop != null)
 			{
 				PathMaker.Instance.selectedCrop = crop;
+				//densities are normally copied out of the plot panel's sliders, and
+				//that panel never opens in an unattended run; without this the zone
+				//plants nothing and the benchmark measures an empty field
+				if (PathMaker.Instance.xDensity <= 0f) PathMaker.Instance.xDensity = 1.4f;
+				if (PathMaker.Instance.yDensity <= 0f) PathMaker.Instance.yDensity = 0.55f;
+				if (PathMaker.Instance.weedDensity <= 0f) PathMaker.Instance.weedDensity = 0.12f;
 				Transform rover = PathMaker.Instance.rover.transform;
 				GameObject helperGo = UnityEngine.Object.Instantiate(PathMaker.Instance.manip.plotHelperPrefab);
 				PlotHelper helper = helperGo.GetComponent<PlotHelper>();
 				if (helper != null)
 				{
 					helper.plant = crop;
+					helper.weedDensity = PathMaker.Instance.weedDensity;
 					helper.size = new Vector2(10f, 10f);
 					Vector3 flat = rover.forward; flat.y = 0f; flat.Normalize();
 					helperGo.transform.position = new Vector3(rover.position.x, 500f, rover.position.z) + flat * 16f;
@@ -619,8 +672,11 @@ public class GraphicsSettings : MonoBehaviour
 	{
 		string path = string.IsNullOrEmpty(benchmarkOut) ? Path.Combine(Application.persistentDataPath, "benchmark.csv") : benchmarkOut;
 		bool fresh = !File.Exists(path);
+		int plants = Plant.All.Count;
+		float managedMb = GC.GetTotalMemory(false) / (1024f * 1024f);
+		string crop = PathMaker.Instance != null && PathMaker.Instance.selectedCrop != null ? PathMaker.Instance.selectedCrop.name : "";
 		StringBuilder sb = new StringBuilder();
-		if (fresh) sb.AppendLine("time,quality,render,display,avg_fps,one_percent_low_fps,cpu_ms,gpu_ms,frames,status,gpu_name,vram_mb,cpu_name");
+		if (fresh) sb.AppendLine("time,quality,render,display,avg_fps,one_percent_low_fps,cpu_ms,gpu_ms,frames,plants,managed_mb,crop,status,gpu_name,vram_mb,cpu_name");
 		sb.AppendLine(string.Join(",", new string[] {
 			DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
 			QualitySettings.names[QualitySettings.GetQualityLevel()],
@@ -631,6 +687,9 @@ public class GraphicsSettings : MonoBehaviour
 			cpuMs.ToString("0.00", CultureInfo.InvariantCulture),
 			gpuMs.ToString("0.00", CultureInfo.InvariantCulture),
 			frames.ToString(CultureInfo.InvariantCulture),
+			plants.ToString(CultureInfo.InvariantCulture),
+			managedMb.ToString("0", CultureInfo.InvariantCulture),
+			Quote(crop),
 			status,
 			Quote(SystemInfo.graphicsDeviceName),
 			SystemInfo.graphicsMemorySize.ToString(CultureInfo.InvariantCulture),
@@ -641,7 +700,7 @@ public class GraphicsSettings : MonoBehaviour
 			File.AppendAllText(path, sb.ToString());
 		}
 		catch (Exception e) { Debug.LogError("[Benchmark] could not write " + path + ": " + e.Message); }
-		Debug.Log("[Benchmark] " + status + " quality=" + QualitySettings.names[QualitySettings.GetQualityLevel()] + " render=" + Screen.width + "x" + Screen.height
+		Debug.Log("[Benchmark] " + status + " quality=" + QualitySettings.names[QualitySettings.GetQualityLevel()] + " plants=" + plants + " managed=" + managedMb.ToString("0") + "MB render=" + Screen.width + "x" + Screen.height
 			+ " avg=" + avgFps.ToString("0.0", CultureInfo.InvariantCulture) + "fps low1%=" + lowFps.ToString("0.0", CultureInfo.InvariantCulture)
 			+ "fps cpu=" + cpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms gpu=" + gpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms -> " + path);
 	}

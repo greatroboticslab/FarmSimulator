@@ -104,6 +104,8 @@ What the tier system relies on elsewhere:
 - `Plant` no longer has a per-plant `Update`; only plants inside a UV lamp trigger are ticked, from `GraphicsSettings`.
 - Grass tufts (`Assets/Terrain/GrassTuft.prefab`, `DryTuft.prefab`) never cast shadows; `FarmTerrainBuilder` enforces this when regenerating terrain.
 - `ProjectSettings/TimeManager.asset` caps the physics catch-up at 0.1 s per frame so a slow frame cannot spiral into more physics steps.
+- `PlantZone` measures the chosen crop prefab and thins the grid when one plot would exceed the tier's triangle budget (`PlotTriangleBudget` in that file, 0 = no limit). It also spawns at most one companion humanoid instead of one per plot.
+- `HumanoidRobot.GenerateNeuralNetwork` builds its first weight layer from the input vector. It now asks for vector inputs only: with the camera image included, the layer was 512x512x3 by 256 floats, about 800 MB built one `Random.Range` at a time, for every humanoid that spawned.
 
 Measuring: build with `Tools > Build Windows Player`, then run the player once per tier:
 

@@ -97,6 +97,9 @@ public class TutorialBook : MonoBehaviour
 	TMP_Text pageText;
 	int page;
 
+	//Unattended runs (the -benchmark mode) skip the first-visit manual
+	public static void SuppressFirstTime() { shownThisSession = true; }
+
 	//Called after the farm loads; builds UI on first use
 	public static void ShowFirstTime()
 	{

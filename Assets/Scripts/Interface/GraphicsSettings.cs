@@ -158,7 +158,10 @@ public class GraphicsSettings : MonoBehaviour
 
 		if (intel)
 		{
-			if (name.Contains("arc")) return 3;          //discrete Arc cards
+			//discrete Arc cards carry a model number (A380, A770, B580); "Arc Graphics"
+			//without one is the Meteor Lake integrated part
+			if (System.Text.RegularExpressions.Regex.IsMatch(name, @"arc(\(tm\))?\s*[ab]\d{3}")) return 3;
+			if (name.Contains("arc")) return 2;
 			if (name.Contains("iris")) return 1;         //Iris Plus / Xe integrated
 			return 0;                                    //UHD / HD Graphics integrated
 		}
@@ -502,12 +505,15 @@ public class GraphicsSettings : MonoBehaviour
 		while (PathMaker.Instance == null && Time.unscaledTime < deadline) yield return null;
 		yield return new WaitForSecondsRealtime(2f);
 
+		//the showroom models may still be hidden; only their prefab reference and flags matter
 		RobotInfo choice = null;
-		foreach (RobotInfo ri in UnityEngine.Object.FindObjectsOfType<RobotInfo>())
+		List<RobotInfo> infos = new List<RobotInfo>(UnityEngine.Object.FindObjectsOfType<RobotInfo>(true));
+		infos.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+		foreach (RobotInfo ri in infos)
 		{
-			if (ri.humanoid || ri.training) continue;
-			if (choice == null || (ri.robot != null && ri.robot.GetComponent<DebugRover>() != null)) choice = ri;
-			if (choice == ri && ri.robot != null && ri.robot.GetComponent<DebugRover>() != null && ri.robot.name.ToLowerInvariant().Contains("debug")) break;
+			if (ri.humanoid || ri.training || ri.robot == null) continue;
+			bool wheeled = ri.robot.GetComponent<DebugRover>() != null;
+			if (choice == null || (wheeled && choice.robot.GetComponent<DebugRover>() == null)) choice = ri;
 		}
 		if (choice == null || PathMaker.Instance == null)
 		{
@@ -539,6 +545,7 @@ public class GraphicsSettings : MonoBehaviour
 			Quit();
 			yield break;
 		}
+		TutorialBook.SuppressFirstTime();
 		coords.LoadCoords();
 
 		//farm: wait for the rover to spawn and the props to finish placing

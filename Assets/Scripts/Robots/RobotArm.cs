@@ -143,7 +143,6 @@ public class RobotArm : MonoBehaviour
 
 		if(harvesting) {
 
-            Debug.Log(stage);
 
 			timeHarvesting += Time.deltaTime;
 			
@@ -233,7 +232,6 @@ public class RobotArm : MonoBehaviour
 					}
 					// Grab
 					if(stage == 2) {
-                        Debug.Log("GRABBING");
                         //Debug.Log(joints[joints.Count-1].curVal);
                         joints[joints.Count-1].input = 0.2f;
                         freeze = true;
@@ -252,7 +250,6 @@ public class RobotArm : MonoBehaviour
                         currentTarget = basketSpot;
                         targetPos = currentTarget.position;
                         freeze = false;
-                        Debug.Log("" + desiredSpot + ", " + currentTarget + ", " + Vector3.Distance(desiredSpot.position, targetPos));
 					    if(Vector3.Distance(desiredSpot.position, targetPos) <= minDist) {
                             //joints[joints.Count-1].input = -1.0f;
                             cutting = false;

@@ -35,6 +35,7 @@ public class PosDisplay : MonoBehaviour
 	public Button configRobotButton;
 	
 	private int lastPlant;
+	private float nextHudRefresh;
 	
 	
 
@@ -58,7 +59,10 @@ public class PosDisplay : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-		
+		//every text assignment rebuilds the canvas; ten refreshes a second is plenty for readouts
+		if(Time.unscaledTime < nextHudRefresh) return;
+		nextHudRefresh = Time.unscaledTime + 0.1f;
+
 		if(plotPanel != null && plotPanel.activeSelf) {
 
 			if(PathMaker.Instance != null) {

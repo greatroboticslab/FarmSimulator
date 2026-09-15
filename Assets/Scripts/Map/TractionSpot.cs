@@ -15,9 +15,4 @@ public class TractionSpot : MonoBehaviour
         
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

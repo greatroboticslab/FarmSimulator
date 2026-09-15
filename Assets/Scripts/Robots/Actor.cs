@@ -23,11 +23,6 @@ public class Actor : MonoBehaviour
 	animInfo = anim.GetCurrentAnimatorStateInfo(0);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-	
-    }
 
 	void ReplaceClip(string stateName, AnimationClip newClip)
     {

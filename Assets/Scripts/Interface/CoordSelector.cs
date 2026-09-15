@@ -28,6 +28,14 @@ public class CoordSelector : MonoBehaviour
 	public Dropdown dropdown;
 	private string dataPath;
 	private string coordListPath;
+	//same content as Assets/Data/locations.csv, used when the file is missing from a build
+	const string DefaultLocations =
+		"name,latitude,longitude\n" +
+		"MTSU Farms,35.88641912497391,-86.2760566862862\n" +
+		"Hutchinson Farms,35.80618561087989,-86.41095596830571\n" +
+		"Freethought Farm,35.88338517879214,-86.33734825244858\n" +
+		"Williamson Family Farm,35.8684617198596,-86.45049737923026\n" +
+		"Farm in the City,36.16285203548636, -86.79425747718278\n";
 	public List<CoordinateEntry> locations;
 	public GameObject ContextMenu;
 	public TMP_Text curRobotDisplay;
@@ -51,9 +59,17 @@ public class CoordSelector : MonoBehaviour
         if(b != null) b.onClick.AddListener(LoadCoords);
 		if(selectRobotButton != null) selectRobotButton.onClick.AddListener(SelectRobot);
 
-		if(File.Exists(coordListPath)) {
-			StreamReader reader = new StreamReader(coordListPath);
-	        string fData = reader.ReadToEnd();
+		//players do not get Assets/Data copied next to them, so look in a few
+		//places and fall back to the farms that ship in the scene
+		string fData = null;
+		foreach(string candidate in new string[] { coordListPath, Application.streamingAssetsPath + "/locations.csv", Application.streamingAssetsPath + "/Data/locations.csv" }) {
+			if(File.Exists(candidate)) { fData = File.ReadAllText(candidate); coordListPath = candidate; break; }
+		}
+		if(fData == null) {
+			Debug.LogWarning("CoordSelector: locations.csv not found at " + coordListPath + "; using the built-in farm list");
+			fData = DefaultLocations;
+		}
+		{
 			int line = 0;
 			foreach(string f in fData.Split('\n')) {
 				if(line > 0 && !string.IsNullOrWhiteSpace(f)) {
@@ -67,12 +83,7 @@ public class CoordSelector : MonoBehaviour
 				}
 				line += 1;
 			}
-	        reader.Close();
 		}
-		else {
-			Debug.LogWarning("CoordSelector: locations.csv not found at " + coordListPath);
-		}
-
 		if(dropdown != null) {
 			dropdown.options.Clear();
 			foreach(CoordinateEntry e in locations) {

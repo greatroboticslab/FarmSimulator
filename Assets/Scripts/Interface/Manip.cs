@@ -23,6 +23,7 @@ public class Manip : MonoBehaviour
 	
 	public GameObject smallCamScreen;
 	public GameObject fullCamScreen;
+	private float nextXrProbe;
 	private bool fullView;
 
 	public InputDevice rightController;
@@ -431,7 +432,9 @@ public class Manip : MonoBehaviour
 		
 		
         
-		if(!rightController.isValid || !leftController.isValid || !HMD.isValid) {
+		//without a headset these never become valid; probing every frame allocated three lists per frame
+		if(Time.unscaledTime >= nextXrProbe && (!rightController.isValid || !leftController.isValid || !HMD.isValid)) {
+			nextXrProbe = Time.unscaledTime + 2f;
 			InitializeInputDevices();
 		}
 		

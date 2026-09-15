@@ -7,15 +7,19 @@ public class Plant : MonoBehaviour
 	//registry of live plants so robots can detect crops without physics queries
 	public static readonly List<Plant> All = new List<Plant>();
 
+	//plants currently inside a UV lamp's trigger; the only ones that need
+	//per-frame work, ticked from one place instead of an Update per plant
+	static readonly List<Plant> Sterilizing = new List<Plant>();
+
 	void OnEnable() { All.Add(this); }
-	void OnDisable() { All.Remove(this); }
+	void OnDisable() { All.Remove(this); Sterilizing.Remove(this); }
 
 	public GameObject visibleMesh;
 	private bool wayPointAdded;
-	
+
 	public GameObject healthyModel;
 	public GameObject deadModel;
-	
+
 	public float health;
 	public float mold;
 	public float water;
@@ -24,12 +28,12 @@ public class Plant : MonoBehaviour
 	public bool killingMold;
 	public bool moldVulnerable;
 	public DebugRover rover;
-	
+
 	public GameObject[] growthStages;
 	public GameObject fruitParent;
 	public List<GameObject> fruits;
 	public int growthStage;
-	
+
 	public bool desired;
 
     // Start is called before the first frame update
@@ -45,7 +49,7 @@ public class Plant : MonoBehaviour
 			growthStage = Random.Range(0,4);
 			growthStages[growthStage].SetActive(true);
 		}
-		
+
 		health = 40;
 		water = Random.Range(0,100);
         //mold = Random.Range(0,100);
@@ -55,40 +59,58 @@ public class Plant : MonoBehaviour
 			mold = 0;
 		}
     }
-	
-    // Update is called once per frame
-    void Update()
+
+	//Called by UVCollider when a lamp rover's trigger covers or leaves this plant
+	public void SetSterilizing(DebugRover r, bool on) {
+		killingMold = on;
+		if(on) {
+			rover = r;
+			if(!Sterilizing.Contains(this)) Sterilizing.Add(this);
+		}
+		else {
+			Sterilizing.Remove(this);
+		}
+	}
+
+	//Advances every plant under a lamp; called once per frame by GraphicsSettings
+	public static void TickAll(float dt) {
+		for(int i = Sterilizing.Count - 1; i >= 0; i--) {
+			Plant p = Sterilizing[i];
+			if(p == null) { Sterilizing.RemoveAt(i); continue; }
+			p.Tick(dt);
+		}
+	}
+
+	void Tick(float dt)
     {
-		
+
 		if(rover != null) {
 			if(!rover.lightOn) {
 				killingMold = false;
 			}
 		}
-		
-		if(killingMold) {
+
+		if(killingMold && rover != null) {
 			float dist = Vector3.Distance(transform.position, rover.transform.position);
-			float killAmount = (10f * Time.deltaTime)/(dist*dist);
-			if(rover != null) {
-				mold -= killAmount;
-			}
+			float killAmount = (10f * dt)/(dist*dist);
+			mold -= killAmount;
 			if(mold <= 0) {
 				mold = 0;
 				health -= killAmount;
 				healthy = true;
 			}
 		}
-		
+
 		if(health <= 0) {
-			
+
 			if(healthy) {
-				deadModel.SetActive(true);
-				healthyModel.SetActive(false);
+				if(deadModel != null) deadModel.SetActive(true);
+				if(healthyModel != null) healthyModel.SetActive(false);
 				healthy = false;
 			}
-			
+
 		}
-		
+
 		if(healthy) {
 			if(desired) {
 				if(!removedWaypoint) {
@@ -105,7 +127,7 @@ public class Plant : MonoBehaviour
 				}
 			}
 		}
-		
+
 		/*
         if(Vector3.Distance(transform.position, Camera.main.transform.position) > 50f) {
         	visibleMesh.SetActive(false);
@@ -114,7 +136,7 @@ public class Plant : MonoBehaviour
         	visibleMesh.SetActive(true);
         }
 		*/
-		
+
 		if(!wayPointAdded) {
 			if(PathMaker.Instance != null) {
 				//wayPointAdded = true;

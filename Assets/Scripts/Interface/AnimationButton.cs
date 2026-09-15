@@ -16,11 +16,6 @@ public class AnimationButton : MonoBehaviour
 		if(button != null) button.onClick.AddListener(ButtonClicked);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 
 	public void ButtonClicked() {
 

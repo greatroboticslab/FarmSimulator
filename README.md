@@ -51,6 +51,27 @@ Now that the crops are planted, if you are in self-driving mode, the rover or hu
 
 You can place different spots or patches that have different traction values. For instance, grass has low traction, water has lower traction, and rovers can get stuck in dirt. To place these spots down, press the "Edit Traction" button, and select the patch type. You can then place down the objects, highlighted by a blue outline.
 
+### Graphics settings and laptops with integrated graphics
+
+The simulator picks a graphics tier for your machine the first time it runs: integrated GPUs (Intel UHD/Iris, AMD Radeon Graphics/Vega) start on Very Low or Low, dedicated GPUs start on High. Two buttons on the right-hand panel of the farm view let you change this at any time, and the choice is remembered:
+
+- **Graphics: ...** cycles through Very Low, Low, Medium, High, Very High and Ultra. The tier controls shadows, grass density and distance, view distance, post-processing (bloom and anti-aliasing), the number of decorative trees, rocks and people on the farm, and how often the robot's picture-in-picture camera refreshes.
+- **Render: WxH** cycles the render resolution (automatic for the tier, 540p, 720p, 900p, 1080p, native). The picture is scaled to fill the screen. Lowering this is the most effective way to speed up an integrated GPU.
+
+Press **F3** to show a frame-rate overlay with CPU and GPU frame times, the current tier and render resolution, and the GPU name. The lower tiers cap the frame rate at 60 fps so laptops do not thermal-throttle; the game also drops to 10 fps while it is not the active window.
+
+Command-line switches for support and testing:
+
+    FarmSimulator.exe -quality 1              start on a given tier (0 = Very Low ... 5 = Ultra)
+    FarmSimulator.exe -renderheight 720       force a render height in pixels (0 = automatic, -1 = native)
+    FarmSimulator.exe -overlay                start with the F3 overlay on
+    FarmSimulator.exe -benchmark -quality 1   unattended benchmark: drives to the farm, plants a plot,
+                                              measures for 6 s, appends a row to benchmark.csv and quits
+
+`benchmark.csv` is written to `%USERPROFILE%\AppData\LocalLow\DefaultCompany\Robotics-Sim\` unless `-benchmark-out <file>` is given. If the simulator runs badly on a machine, run the benchmark on Very Low, Low and Medium and send the CSV together with `Player.log` from the same folder.
+
+Inside the Unity editor the tier system works the same way in Play mode, but the Render button cannot change the editor's own resolution: pick a fixed size such as 1280x720 in the Game view's resolution dropdown instead of Free Aspect. On a Linux laptop with hybrid graphics, launch the editor with NVIDIA PRIME offload (`__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia`, see `run with gpu.txt`) to use the dedicated GPU; without those variables the editor runs on the integrated one.
+
 ## Developer's Guide
 
 ### Scripting

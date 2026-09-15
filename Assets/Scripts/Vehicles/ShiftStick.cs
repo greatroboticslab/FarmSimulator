@@ -14,11 +14,6 @@ public class ShiftStick : MonoBehaviour
         rb = GetComponent<Rigidbody>();
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 	private void OnTriggerEnter(Collider other)
     {
 		//Debug.Log("GEAR SHIFT!");

@@ -116,9 +116,4 @@ public class SelectMenu : MonoBehaviour
 		return tex;
 	}
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

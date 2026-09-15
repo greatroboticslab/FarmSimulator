@@ -319,6 +319,14 @@ public static class FarmTerrainBuilder
 			//instanced terrain details silently draw nothing without this flag
 			Material m = AssetDatabase.LoadAssetAtPath<Material>("Assets/Terrain/" + name + "Mat.mat");
 			if (m != null && !m.enableInstancing) { m.enableInstancing = true; EditorUtility.SetDirty(m); }
+			//a million tufts re-drawn into every shadow cascade is the single
+			//heaviest thing on integrated graphics; grass never casts shadows
+			MeshRenderer existingRenderer = existing.GetComponent<MeshRenderer>();
+			if (existingRenderer != null && existingRenderer.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off)
+			{
+				existingRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+				EditorUtility.SetDirty(existing);
+			}
 			return existing;
 		}
 
@@ -365,7 +373,9 @@ public static class FarmTerrainBuilder
 
 		GameObject go = new GameObject(name);
 		go.AddComponent<MeshFilter>().sharedMesh = mesh;
-		go.AddComponent<MeshRenderer>().sharedMaterial = mat;
+		MeshRenderer renderer = go.AddComponent<MeshRenderer>();
+		renderer.sharedMaterial = mat;
+		renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 		GameObject prefab = PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
 		Object.DestroyImmediate(go);
 		return prefab;

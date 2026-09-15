@@ -63,6 +63,8 @@ public class HumanoidRobot : MonoBehaviour
 	public float vradMultiplier = 0.5f;
 	public Director director;
 	public Camera mainCamera;
+	//cached ground-ray mask; LayerMask.GetMask is a string lookup
+	static int notHumanoidMask;
 	public PathMaker.Waypoint currentWaypoint;
 	public bool gotWaypoint;
 	public bool wantsToTeleport;
@@ -1400,7 +1402,6 @@ public class HumanoidRobot : MonoBehaviour
         if (Physics.Raycast(ray, out hit, rayDistance, layerMask))
         {
 			if (hit.collider.CompareTag("tractionSpot")) {
-				Debug.Log("Traction Zone!");
 				TractionSpot tractionSpot = hit.collider.gameObject.GetComponent<TractionSpot>();
 				if(tractionSpot != null) {
 					currentFriction = tractionSpot.traction;
@@ -1543,7 +1544,8 @@ public class HumanoidRobot : MonoBehaviour
 			
 			if(forward != 0 && !ridingTractor) {
 				
-				LayerMask layerMask = ~LayerMask.GetMask("humanoid");
+				if(notHumanoidMask == 0) notHumanoidMask = ~LayerMask.GetMask("humanoid");
+				LayerMask layerMask = notHumanoidMask;
 				RaycastHit ghit;
 				// Does the ray intersect any objects excluding the player layer
 				if (Physics.Raycast(transform.position + new Vector3(0,1,0), transform.TransformDirection(-Vector3.up), out ghit, Mathf.Infinity, layerMask))

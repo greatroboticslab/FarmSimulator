@@ -44,11 +44,6 @@ public class CropMenu : MonoBehaviour
 	}
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 
 	void OnMenuSelected(CropCategory c) {
 		if(c == null || c.menu == null) return;

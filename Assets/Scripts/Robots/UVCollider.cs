@@ -13,11 +13,6 @@ public class UVCollider : MonoBehaviour
         rover = transform.parent.gameObject.GetComponent<DebugRover>();
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 	
 	private void OnTriggerEnter(Collider other) {
 		
@@ -25,8 +20,7 @@ public class UVCollider : MonoBehaviour
 			Plant plant = other.gameObject.GetComponent<Plant>();
 			if(plant == null) return;
 
-			plant.killingMold = true;
-			plant.rover = rover;
+			plant.SetSterilizing(rover, true);
 			
 		}
 		
@@ -36,7 +30,7 @@ public class UVCollider : MonoBehaviour
 		
 		if(other.gameObject.layer == 6) {
 			Plant plant = other.gameObject.GetComponent<Plant>();
-			if(plant != null) plant.killingMold = false;
+			if(plant != null) plant.SetSterilizing(rover, false);
 			
 		}
 		

@@ -9,6 +9,7 @@ public class RobotConfig : MonoBehaviour
 {
 
 	public bool sync; //Whether to set the DebugRover's parameters to this scripts.
+	private float nextSync;
 	public DebugRover rover;
 	public HumanoidRobot humanoid;
 	public GameObject roverPanel;
@@ -38,6 +39,9 @@ public class RobotConfig : MonoBehaviour
     void Update()
     {
 
+	//seven text fields were parsed every frame; ten times a second is enough
+	if(Time.unscaledTime < nextSync) return;
+	nextSync = Time.unscaledTime + 0.1f;
 	if(sync) {
 
 		if(rover) {

@@ -26,5 +26,26 @@ public static class BuildTools
 			+ ", " + (report.summary.totalSize / (1024 * 1024)) + " MB"
 			+ ", errors " + report.summary.totalErrors
 			+ " -> " + report.summary.outputPath);
+
+		if (report.summary.result == BuildResult.Succeeded) CopyDataFiles(dir + "/FarmSimulator_Data");
+	}
+
+	//CoordSelector reads Assets/Data/locations.csv through Application.dataPath,
+	//which Unity does not copy into a player; without it the farm list is empty
+	//and "Go to Farm" cannot load a map. Ship the folder next to the player data.
+	static void CopyDataFiles(string dataDir)
+	{
+		const string src = "Assets/Data";
+		if (!Directory.Exists(src)) return;
+		string dst = Path.Combine(dataDir, "Data");
+		Directory.CreateDirectory(dst);
+		int copied = 0;
+		foreach (string file in Directory.GetFiles(src))
+		{
+			if (file.EndsWith(".meta")) continue;
+			File.Copy(file, Path.Combine(dst, Path.GetFileName(file)), true);
+			copied++;
+		}
+		Debug.Log("BuildTools: copied " + copied + " data file(s) to " + dst);
 	}
 }

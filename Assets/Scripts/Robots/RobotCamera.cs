@@ -15,11 +15,6 @@ public class RobotCamera : MonoBehaviour
         cam = GetComponent<Camera>();
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
     
     public void CaptureFrame(string folderName) {
     	

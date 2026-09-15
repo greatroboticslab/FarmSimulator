@@ -130,17 +130,7 @@ public class PathMaker : MonoBehaviour
 			}
 			return null;
 		}
-		Vector2 pos2 = new Vector2(pos.x,pos.z);
 		int least = 0;
-		for(int i = 0; i < waypoints.Count; i++) {
-			
-			if(Vector2.Distance(pos2, waypoints[i].pos) < Vector2.Distance(pos2, waypoints[least].pos)) {
-				least = i;
-			}
-			
-		}
-		
-		least = 0;
 		
 		Waypoint le = waypoints[least];
 		if(currentWayPointObj != null) {

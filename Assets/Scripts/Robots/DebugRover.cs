@@ -620,6 +620,14 @@ public class DebugRover : MonoBehaviour
 		
 		controls = new PlayerControls();
 		controls.Gameplay.Enable();
+		//subscribe once here; doing it in Update grew the callback list every frame
+		controls.Gameplay.toggleArm.performed += ctx => armMode = !armMode;
+		controls.Gameplay.rightStick.performed += ctx => rStick = ctx.ReadValue<Vector2>();
+		controls.Gameplay.rightStick.canceled += ctx => rStick = Vector2.zero;
+		controls.Gameplay.rightTrigger.performed += ctx => rTrigger = ctx.ReadValue<float>();
+		controls.Gameplay.rightTrigger.canceled += ctx => rTrigger = 0f;
+		controls.Gameplay.leftTrigger.performed += ctx => lTrigger = ctx.ReadValue<float>();
+		controls.Gameplay.leftTrigger.canceled += ctx => lTrigger = 0f;
 		
 		PathMaker.Instance.rover = this;
 		PathMaker.Instance.currentRobot = gameObject;
@@ -701,16 +709,6 @@ public class DebugRover : MonoBehaviour
 		TractionUpdate();
 		
 		
-		controls.Gameplay.toggleArm.performed += ctx => armMode = !armMode;
-		
-		controls.Gameplay.rightStick.performed += ctx => rStick = ctx.ReadValue<Vector2>();
-		controls.Gameplay.rightStick.canceled += ctx => rStick = Vector2.zero;
-		
-		controls.Gameplay.rightTrigger.performed += ctx => rTrigger = ctx.ReadValue<float>();
-		controls.Gameplay.rightTrigger.canceled += ctx => rTrigger = 0f;
-		
-		controls.Gameplay.leftTrigger.performed += ctx => lTrigger = ctx.ReadValue<float>();
-		controls.Gameplay.leftTrigger.canceled += ctx => lTrigger = 0f;
 
 
 

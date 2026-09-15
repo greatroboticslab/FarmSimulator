@@ -1,99 +1,648 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.Rendering.PostProcessing;
 using TMPro;
 
-//Player-facing graphics quality control. Adds a Graphics button to the HUD
-//that cycles quality levels, scales the expensive terrain grass with the
-//chosen level, and remembers the choice between runs.
+//Player-facing graphics control plus the runtime half of the low-end
+//performance work.
+//
+// - picks a quality tier for the machine on first run (integrated GPUs
+//   start low, dedicated GPUs start high) and remembers the player's choice
+// - scales the render resolution with the tier (the biggest single win on
+//   integrated graphics), with a separate HUD button to override it
+// - ties post-processing, HDR, shadows, terrain grass, terrain mesh detail,
+//   view distance, decorative prop counts and the robot picture-in-picture
+//   cameras to the tier
+// - caps the frame rate on the lower tiers so laptops do not thermal-throttle
+// - F3 shows a frame-time overlay; "-benchmark" runs an unattended measurement
+//   pass and writes benchmark.csv (see BenchmarkRoutine)
 public class GraphicsSettings : MonoBehaviour
 {
 	const string PrefKey = "FarmSim_QualityLevel";
+	//0 = automatic for the tier, otherwise the render height in pixels
+	const string HeightPrefKey = "FarmSim_RenderHeight";
 
+	//---- per-tier table; index = quality level (Very Low, Low, Medium, High, Very High, Ultra)
+	static readonly int[]   RenderHeight   = { 540, 720, 900, 0, 0, 0 };          //0 = native
+	static readonly bool[]  PostFx         = { false, false, true, true, true, true };
+	static readonly bool[]  BloomOn        = { false, false, false, true, true, true };
+	static readonly bool[]  HdrOn          = { false, false, false, true, true, true };
+	static readonly float[] ShadowDist     = { 0f, 40f, 70f, 120f, 140f, 170f };
+	static readonly float[] DetailDist     = { 0f, 30f, 60f, 100f, 120f, 140f };
+	static readonly float[] DetailDensity  = { 0f, 0.35f, 0.6f, 0.85f, 1f, 1f };
+	static readonly float[] PixelError     = { 24f, 16f, 12f, 8f, 6f, 5f };
+	static readonly float[] BasemapDist    = { 100f, 150f, 300f, 600f, 800f, 1000f };
+	static readonly bool[]  TerrainShadows = { false, false, true, true, true, true };
+	static readonly float[] FarClip        = { 400f, 550f, 750f, 1000f, 1000f, 1000f };
+	static readonly int[]   TargetFps      = { 60, 60, 60, 0, 0, 0 };             //0 = vsync, uncapped
+	static readonly float[] PropFrac       = { 0.2f, 0.35f, 0.6f, 1f, 1f, 1f };
+	static readonly int[]   AnimatedProps  = { 0, 0, 12, 40, 60, 80 };
+	static readonly float[] PipFps         = { 5f, 8f, 12f, 30f, 60f, 0f };         //0 = every frame
+	static readonly float[] PipShadowDist  = { 0f, 0f, 20f, 60f, 100f, 170f };
+
+	//render heights offered by the Resolution button; 0 = automatic, -1 = native
+	static readonly int[] HeightChoices = { 0, 540, 720, 900, 1080, -1 };
+
+	static GraphicsSettings instance;
 	static Button hudButton;
+	static Button resButton;
+	static bool showOverlay;
 
-	//Restore the player's saved quality before anything renders
+	//benchmark state
+	static bool benchmark;
+	static float benchmarkSeconds = 6f;
+	static string benchmarkOut;
+
+	float cameraScanAt;
+	readonly List<float> frameTimes = new List<float>(1024);
+	float overlayFps, overlayCpu, overlayGpu;
+	float overlayAccum; int overlayFrames;
+	readonly FrameTiming[] timing = new FrameTiming[1];
+
+	static int Levels { get { return QualitySettings.names.Length; } }
+	static int Clamp(int level) { return Mathf.Clamp(level, 0, Levels - 1); }
+	static T Pick<T>(T[] table, int level) { return table[Mathf.Clamp(level, 0, table.Length - 1)]; }
+
+	//======================================================================
+	// startup
+	//======================================================================
+
+	//Choose the tier before anything renders
 	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 	static void ApplySavedQuality()
 	{
-		if (PlayerPrefs.HasKey(PrefKey))
-		{
-			int level = Mathf.Clamp(PlayerPrefs.GetInt(PrefKey), 0, QualitySettings.names.Length - 1);
-			QualitySettings.SetQualityLevel(level, true);
-		}
-		ApplyTerrainCost();
+		ParseCommandLine();
+
+		//physics may not try to catch up with more than a few steps after a slow
+		//frame, otherwise a low frame rate spirals into an even lower one
+		Time.maximumDeltaTime = 0.1f;
+
+		int level;
+		string source;
+		int forced = CommandLineInt("-quality", -1);
+		if (forced >= 0) { level = Clamp(forced); source = "command line"; }
+		else if (PlayerPrefs.HasKey(PrefKey)) { level = Clamp(PlayerPrefs.GetInt(PrefKey)); source = "saved"; }
+		else { level = DetectTier(); source = "auto-detected"; PlayerPrefs.SetInt(PrefKey, level); PlayerPrefs.Save(); }
+
+		int forcedHeight = CommandLineInt("-renderheight", int.MinValue);
+		if (forcedHeight != int.MinValue) PlayerPrefs.SetInt(HeightPrefKey, forcedHeight);
+
+		QualitySettings.SetQualityLevel(level, true);
+		Debug.Log("[GraphicsSettings] " + SystemSummary() + "\n[GraphicsSettings] quality " + QualitySettings.names[level] + " (" + source + ")");
+
+		GameObject go = new GameObject("GraphicsSettings");
+		DontDestroyOnLoad(go);
+		instance = go.AddComponent<GraphicsSettings>();
+		SceneManager.sceneLoaded += OnSceneLoaded;
 	}
+
+	//The scene's cameras, terrain and post volume exist now
+	[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+	static void ApplyAfterLoad()
+	{
+		ApplyTerrainCost();
+		if (benchmark && instance != null) instance.StartCoroutine(instance.BenchmarkRoutine());
+	}
+
+	static void OnSceneLoaded(Scene s, LoadSceneMode m) { ApplyTerrainCost(); }
+
+	static void ParseCommandLine()
+	{
+		string[] args = Environment.GetCommandLineArgs();
+		for (int i = 0; i < args.Length; i++)
+		{
+			string a = args[i].ToLowerInvariant();
+			if (a == "-benchmark") benchmark = true;
+			else if (a == "-benchmark-seconds" && i + 1 < args.Length) float.TryParse(args[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out benchmarkSeconds);
+			else if (a == "-benchmark-out" && i + 1 < args.Length) benchmarkOut = args[i + 1];
+			else if (a == "-overlay") showOverlay = true;
+		}
+	}
+
+	static int CommandLineInt(string flag, int fallback)
+	{
+		string[] args = Environment.GetCommandLineArgs();
+		for (int i = 0; i + 1 < args.Length; i++)
+		{
+			if (string.Equals(args[i], flag, StringComparison.OrdinalIgnoreCase))
+			{
+				int v;
+				if (int.TryParse(args[i + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out v)) return v;
+			}
+		}
+		return fallback;
+	}
+
+	//Rough hardware classification. Wrong guesses cost one click on the
+	//Graphics button; the guess is only used until the player picks a tier.
+	public static int DetectTier()
+	{
+		string name = (SystemInfo.graphicsDeviceName ?? "").ToLowerInvariant();
+		string vendor = (SystemInfo.graphicsDeviceVendor ?? "").ToLowerInvariant();
+		int vram = SystemInfo.graphicsMemorySize;
+
+		if (name.Contains("basic render") || name.Contains("warp") || name.Contains("llvmpipe") || name.Contains("swiftshader") || name.Contains("software"))
+			return 0;
+
+		bool intel = vendor.Contains("intel") || name.Contains("intel");
+		bool amd = vendor.Contains("amd") || vendor.Contains("advanced micro") || vendor.Contains("ati") || name.Contains("radeon");
+		bool nvidia = vendor.Contains("nvidia") || name.Contains("geforce") || name.Contains("quadro") || name.Contains("rtx") || name.Contains("gtx");
+		bool arm = vendor.Contains("qualcomm") || name.Contains("adreno") || name.Contains("mali") || vendor.Contains("apple");
+
+		if (intel)
+		{
+			if (name.Contains("arc")) return 3;          //discrete Arc cards
+			if (name.Contains("iris")) return 1;         //Iris Plus / Xe integrated
+			return 0;                                    //UHD / HD Graphics integrated
+		}
+		if (amd)
+		{
+			//Windows names: "AMD Radeon(TM) Graphics", "AMD Radeon(TM) Vega 8 Graphics", "AMD Radeon 780M";
+			//Linux Mesa names carry the APU codename: "AMD Radeon Graphics (renoir, LLVM ...)"
+			bool integratedName = name.Contains("vega") || name.Contains("radeon graphics") || name.Contains("(tm) graphics")
+				|| name.EndsWith("graphics")
+				|| System.Text.RegularExpressions.Regex.IsMatch(name, @"radeon\s*\d{3}m\b")
+				|| System.Text.RegularExpressions.Regex.IsMatch(name, @"raven|picasso|renoir|lucienne|cezanne|barcelo|rembrandt|phoenix|mendocino|van gogh|stoney|carrizo|bristol");
+			if (integratedName) return name.Contains("vega") || name.Contains("raven") || name.Contains("picasso") ? 1 : 2;
+			return 3;
+		}
+		if (nvidia)
+		{
+			if (System.Text.RegularExpressions.Regex.IsMatch(name, @"\bmx\s?\d{3}")) return 2;
+			return 3;
+		}
+		if (arm) return 1;
+
+		if (vram > 0 && vram < 1500) return 1;
+		return 2;
+	}
+
+	public static string SystemSummary()
+	{
+		return "GPU '" + SystemInfo.graphicsDeviceName + "' vendor '" + SystemInfo.graphicsDeviceVendor + "' " + SystemInfo.graphicsMemorySize + "MB "
+			+ SystemInfo.graphicsDeviceType + ", CPU '" + SystemInfo.processorType + "' x" + SystemInfo.processorCount + ", RAM " + SystemInfo.systemMemorySize + "MB, display "
+			+ Display.main.systemWidth + "x" + Display.main.systemHeight;
+	}
+
+	//======================================================================
+	// HUD buttons
+	//======================================================================
 
 	//Clones an existing HUD button so Graphics matches its siblings
 	public static void AttachHudButton(Button template)
 	{
 		if (template == null || template.transform.parent == null) return;
-		if (template.transform.parent.Find("GraphicsButton") != null) return;
 
-		hudButton = Object.Instantiate(template, template.transform.parent);
-		hudButton.name = "GraphicsButton";
-		hudButton.onClick.RemoveAllListeners();
-		hudButton.onClick.AddListener(CycleQuality);
-
-		RectTransform rt = hudButton.GetComponent<RectTransform>();
 		RectTransform src = template.GetComponent<RectTransform>();
-		//sits below the Tutorial button, which is one slot below the template
-		rt.anchoredPosition = src.anchoredPosition + new Vector2(0f, -2f * (src.sizeDelta.y + 4f));
+		float slot = src.sizeDelta.y + 4f;
+
+		if (template.transform.parent.Find("GraphicsButton") == null)
+		{
+			hudButton = UnityEngine.Object.Instantiate(template, template.transform.parent);
+			hudButton.name = "GraphicsButton";
+			hudButton.onClick.RemoveAllListeners();
+			hudButton.onClick.AddListener(CycleQuality);
+			//sits below the Tutorial button, which is one slot below the template
+			hudButton.GetComponent<RectTransform>().anchoredPosition = src.anchoredPosition + new Vector2(0f, -2f * slot);
+		}
+
+		if (template.transform.parent.Find("ResolutionButton") == null)
+		{
+			resButton = UnityEngine.Object.Instantiate(template, template.transform.parent);
+			resButton.name = "ResolutionButton";
+			resButton.onClick.RemoveAllListeners();
+			resButton.onClick.AddListener(CycleRenderHeight);
+			resButton.GetComponent<RectTransform>().anchoredPosition = src.anchoredPosition + new Vector2(0f, -3f * slot);
+		}
 
 		RefreshLabel();
 	}
 
 	public static void CycleQuality()
 	{
-		int next = (QualitySettings.GetQualityLevel() + 1) % QualitySettings.names.Length;
-		SetQuality(next);
+		SetQuality((QualitySettings.GetQualityLevel() + 1) % Levels);
 	}
 
 	public static void SetQuality(int level)
 	{
-		level = Mathf.Clamp(level, 0, QualitySettings.names.Length - 1);
+		level = Clamp(level);
 		QualitySettings.SetQualityLevel(level, true);
 		PlayerPrefs.SetInt(PrefKey, level);
 		PlayerPrefs.Save();
 		ApplyTerrainCost();
-		RefreshLabel();
 		Debug.Log("[GraphicsSettings] quality set to " + QualitySettings.names[level]);
 	}
 
-	//Detail grass is the heaviest thing in the scene, so tie it to the level
-	//instead of leaving it fixed regardless of what the player picked
-	public static void ApplyTerrainCost()
+	public static void CycleRenderHeight()
 	{
-		int level = QualitySettings.GetQualityLevel();
-
-		float detailDistance;
-		float detailDensity;
-		float shadowDistance;
-		if (level <= 0) { detailDistance = 0f; detailDensity = 0f; shadowDistance = 40f; }
-		else if (level == 1) { detailDistance = 35f; detailDensity = 0.4f; shadowDistance = 60f; }
-		else if (level == 2) { detailDistance = 70f; detailDensity = 0.7f; shadowDistance = 90f; }
-		else if (level == 3) { detailDistance = 100f; detailDensity = 0.85f; shadowDistance = 120f; }
-		else { detailDistance = 140f; detailDensity = 1f; shadowDistance = 160f; }
-
-		QualitySettings.shadowDistance = shadowDistance;
-
-		foreach (Terrain t in Terrain.activeTerrains)
-		{
-			if (t == null) continue;
-			t.detailObjectDistance = detailDistance;
-			t.detailObjectDensity = detailDensity;
-			t.drawTreesAndFoliage = detailDistance > 0f;
-		}
+		int current = PlayerPrefs.GetInt(HeightPrefKey, 0);
+		int idx = Array.IndexOf(HeightChoices, current);
+		int next = HeightChoices[(idx + 1 + HeightChoices.Length) % HeightChoices.Length];
+		PlayerPrefs.SetInt(HeightPrefKey, next);
+		PlayerPrefs.Save();
+		ApplyResolution(QualitySettings.GetQualityLevel());
+		RefreshLabel();
 	}
 
 	static void RefreshLabel()
 	{
-		if (hudButton == null) return;
-		string text = "Graphics: " + QualitySettings.names[QualitySettings.GetQualityLevel()];
+		SetLabel(hudButton, "Graphics: " + QualitySettings.names[QualitySettings.GetQualityLevel()]);
 
-		TMP_Text label = hudButton.GetComponentInChildren<TMP_Text>();
+		int w, h;
+		TargetResolution(QualitySettings.GetQualityLevel(), out w, out h);
+		string auto = PlayerPrefs.GetInt(HeightPrefKey, 0) == 0 ? " (auto)" : "";
+		SetLabel(resButton, "Render: " + w + "x" + h + auto);
+	}
+
+	static void SetLabel(Button b, string text)
+	{
+		if (b == null) return;
+		TMP_Text label = b.GetComponentInChildren<TMP_Text>();
 		if (label != null) { label.text = text; return; }
-
-		Text legacy = hudButton.GetComponentInChildren<Text>();
+		Text legacy = b.GetComponentInChildren<Text>();
 		if (legacy != null) legacy.text = text;
+	}
+
+	//======================================================================
+	// applying a tier
+	//======================================================================
+
+	//Kept under its historical name: callers push the tier onto the farm once
+	//its terrain exists. Applies everything the tier controls to the scene.
+	public static void ApplyTerrainCost()
+	{
+		int level = QualitySettings.GetQualityLevel();
+
+		QualitySettings.shadowDistance = Pick(ShadowDist, level);
+
+		//frame pacing: capped and vsync-free on the low tiers so a laptop does
+		//not run flat out and throttle; vsync on the high tiers
+		int fps = Pick(TargetFps, level);
+		QualitySettings.vSyncCount = fps > 0 ? 0 : 1;
+		Application.targetFrameRate = fps > 0 ? fps : -1;
+
+		foreach (Terrain t in Terrain.activeTerrains)
+		{
+			if (t == null) continue;
+			//GPU-instanced terrain patches; the shipped prefabs still had the CPU path on
+			t.drawInstanced = true;
+			float dist = Pick(DetailDist, level);
+			t.detailObjectDistance = dist;
+			t.detailObjectDensity = Pick(DetailDensity, level);
+			t.drawTreesAndFoliage = dist > 0f;
+			t.heightmapPixelError = Pick(PixelError, level);
+			t.basemapDistance = Pick(BasemapDist, level);
+			t.shadowCastingMode = Pick(TerrainShadows, level)
+				? UnityEngine.Rendering.ShadowCastingMode.On
+				: UnityEngine.Rendering.ShadowCastingMode.Off;
+		}
+
+		//view distance, with the fog pulled in so the far plane never shows
+		float far = Pick(FarClip, level);
+		if (RenderSettings.fog && RenderSettings.fogMode == FogMode.Linear)
+		{
+			RenderSettings.fogEndDistance = Mathf.Min(950f, far - 30f);
+			RenderSettings.fogStartDistance = Mathf.Min(160f, RenderSettings.fogEndDistance * 0.4f);
+		}
+
+		foreach (Camera cam in UnityEngine.Object.FindObjectsOfType<Camera>(true))
+		{
+			if (cam.targetTexture != null) continue;   //robot picture-in-picture, see RobotCameraThrottle
+			cam.allowHDR = Pick(HdrOn, level);
+			//MSAA only where the quality asset asks for it (Very High and Ultra)
+			cam.allowMSAA = level >= 4;
+			if (cam.farClipPlane > 100f) cam.farClipPlane = far;
+		}
+
+		ApplyPostProcessing(level);
+		ApplyResolution(level);
+
+		RobotCameraThrottle.fps = Pick(PipFps, level);
+		RobotCameraThrottle.shadowDistance = Pick(PipShadowDist, level);
+		RobotCameraThrottle.stripPostProcessing = level < 3;
+
+		if (instance != null) instance.AdoptRobotCameras();
+		RefreshLabel();
+	}
+
+	static void ApplyPostProcessing(int level)
+	{
+		bool fx = Pick(PostFx, level);
+		foreach (PostProcessLayer layer in UnityEngine.Object.FindObjectsOfType<PostProcessLayer>(true))
+		{
+			Camera cam = layer.GetComponent<Camera>();
+			if (cam != null && cam.targetTexture != null) continue;
+			layer.enabled = fx;
+			//the NaN guard is a debugging aid that costs a full-screen pass
+			layer.stopNaNPropagation = false;
+			//cheaper FXAA variant on the middle tier
+			layer.fastApproximateAntialiasing.fastMode = level < 3;
+		}
+
+		bool bloomOn = Pick(BloomOn, level);
+		foreach (PostProcessVolume vol in UnityEngine.Object.FindObjectsOfType<PostProcessVolume>(true))
+		{
+			if (!vol.isGlobal) continue;
+			//the shipped profile asset is empty, so the intended look is built here
+			//on the volume's runtime instance; a proper asset from Tools > Setup
+			//Post Processing is used as-is when present
+			PostProcessProfile profile = vol.profile;
+			Bloom bloom;
+			if (!profile.TryGetSettings(out bloom))
+			{
+				bloom = profile.AddSettings<Bloom>();
+				bloom.enabled.Override(true);
+				bloom.intensity.Override(2.6f);
+				bloom.threshold.Override(1.05f);
+				bloom.softKnee.Override(0.55f);
+			}
+			bloom.active = bloomOn;
+
+			ColorGrading grading;
+			if (!profile.TryGetSettings(out grading))
+			{
+				grading = profile.AddSettings<ColorGrading>();
+				grading.enabled.Override(true);
+				grading.saturation.Override(8f);
+				grading.contrast.Override(6f);
+				grading.postExposure.Override(0.15f);
+			}
+			grading.active = fx;
+		}
+	}
+
+	//Alt-tabbed players do not need 60 frames a second of a farm they cannot see
+	void OnApplicationFocus(bool focused)
+	{
+		if (benchmark) return;
+		if (focused) ApplyTerrainCost();
+		else
+		{
+			//targetFrameRate is ignored while vsync is on, so drop both
+			QualitySettings.vSyncCount = 0;
+			Application.targetFrameRate = 10;
+		}
+	}
+
+	static void TargetResolution(int level, out int w, out int h)
+	{
+		int nativeW = Display.main.systemWidth;
+		int nativeH = Display.main.systemHeight;
+		if (nativeW <= 0 || nativeH <= 0) { nativeW = Screen.width; nativeH = Screen.height; }
+
+		int targetH = PlayerPrefs.GetInt(HeightPrefKey, 0);
+		if (targetH == 0) targetH = Pick(RenderHeight, level);
+
+		if (targetH <= 0 || targetH >= nativeH) { w = nativeW; h = nativeH; }
+		else
+		{
+			h = targetH;
+			w = Mathf.RoundToInt(nativeW * (targetH / (float)nativeH));
+		}
+		w &= ~1; h &= ~1;
+	}
+
+	//Render at a fraction of the screen and let the display scale it up.
+	//Fill rate is what integrated GPUs run out of first, so this is the
+	//single most effective control in the file.
+	static void ApplyResolution(int level)
+	{
+		if (Application.isEditor) return;
+		int w, h;
+		TargetResolution(level, out w, out h);
+		if (Screen.width == w && Screen.height == h) return;
+		Screen.SetResolution(w, h, Screen.fullScreenMode);
+		Debug.Log("[GraphicsSettings] render resolution " + w + "x" + h + " (display " + Display.main.systemWidth + "x" + Display.main.systemHeight + ")");
+	}
+
+	//Decorative props (trees, rocks, people) scale with the tier; see ObjectPlacer
+	public static float PropFraction() { return Pick(PropFrac, QualitySettings.GetQualityLevel()); }
+	public static int AnimatedPropBudget() { return Pick(AnimatedProps, QualitySettings.GetQualityLevel()); }
+
+	//Any enabled camera drawing into a render texture is a robot camera; it
+	//must not render every frame on its own
+	void AdoptRobotCameras()
+	{
+		foreach (Camera cam in Camera.allCameras)
+		{
+			if (cam == null || cam.targetTexture == null) continue;
+			if (cam.GetComponent<RobotCameraThrottle>() == null) cam.gameObject.AddComponent<RobotCameraThrottle>();
+		}
+	}
+
+	//======================================================================
+	// per-frame: robot camera adoption, plant ticking, overlay stats
+	//======================================================================
+
+	void Update()
+	{
+		if (Time.unscaledTime >= cameraScanAt)
+		{
+			cameraScanAt = Time.unscaledTime + 0.5f;
+			AdoptRobotCameras();
+		}
+
+		//plants only need per-frame work while a UV lamp is over them
+		Plant.TickAll(Time.deltaTime);
+
+		if (Input.GetKeyDown(KeyCode.F3)) showOverlay = !showOverlay;
+
+		if (showOverlay || benchmark)
+		{
+			FrameTimingManager.CaptureFrameTimings();
+			uint n = FrameTimingManager.GetLatestTimings(1, timing);
+			overlayAccum += Time.unscaledDeltaTime; overlayFrames++;
+			if (n > 0)
+			{
+				overlayCpu = Mathf.Lerp(overlayCpu, (float)timing[0].cpuFrameTime, 0.1f);
+				overlayGpu = Mathf.Lerp(overlayGpu, (float)timing[0].gpuFrameTime, 0.1f);
+			}
+			if (overlayAccum >= 0.5f)
+			{
+				overlayFps = overlayFrames / overlayAccum;
+				overlayAccum = 0f; overlayFrames = 0;
+			}
+		}
+	}
+
+	void OnGUI()
+	{
+		if (!showOverlay) return;
+		string text = string.Format(CultureInfo.InvariantCulture,
+			"{0:0} fps   cpu {1:0.0} ms   gpu {2:0.0} ms\n{3}   {4}x{5}\n{6}",
+			overlayFps, overlayCpu, overlayGpu,
+			QualitySettings.names[QualitySettings.GetQualityLevel()], Screen.width, Screen.height,
+			SystemInfo.graphicsDeviceName);
+		GUI.color = Color.black;
+		GUI.Label(new Rect(11, 11, 600, 70), text);
+		GUI.color = Color.white;
+		GUI.Label(new Rect(10, 10, 600, 70), text);
+	}
+
+	//======================================================================
+	// unattended benchmark: FarmSimulator.exe -benchmark [-quality N] [-renderheight H]
+	//   [-benchmark-seconds S] [-benchmark-out file]
+	// Drives the menu to the farm with a rover, plants a plot, measures, quits.
+	// Results append to <persistentDataPath>/benchmark.csv unless -benchmark-out is given.
+	//======================================================================
+	IEnumerator BenchmarkRoutine()
+	{
+		Debug.Log("[Benchmark] starting at quality " + QualitySettings.names[QualitySettings.GetQualityLevel()]);
+		showOverlay = true;
+		float deadline = Time.unscaledTime + 90f;
+
+		//showroom: pick the first wheeled rover
+		while (PathMaker.Instance == null && Time.unscaledTime < deadline) yield return null;
+		yield return new WaitForSecondsRealtime(2f);
+
+		RobotInfo choice = null;
+		foreach (RobotInfo ri in UnityEngine.Object.FindObjectsOfType<RobotInfo>())
+		{
+			if (ri.humanoid || ri.training) continue;
+			if (choice == null || (ri.robot != null && ri.robot.GetComponent<DebugRover>() != null)) choice = ri;
+			if (choice == ri && ri.robot != null && ri.robot.GetComponent<DebugRover>() != null && ri.robot.name.ToLowerInvariant().Contains("debug")) break;
+		}
+		if (choice == null || PathMaker.Instance == null)
+		{
+			Debug.LogError("[Benchmark] no rover selectable in the showroom");
+			WriteBenchmarkRow("FAILED: no rover", 0, 0, 0, 0, 0);
+			Quit();
+			yield break;
+		}
+
+		PathMaker.Instance.selectedRobot = choice;
+		PathMaker.Instance.humanoid = choice.humanoid;
+		PathMaker.Instance.useTractor = choice.includeTractor;
+		PathMaker.Instance.training = choice.training;
+		PathMaker.Instance.useTerrain = choice.terrain;
+		if (PathMaker.Instance.mainCam != null)
+		{
+			PathMaker.Instance.mainCam.mode = 0;
+			PathMaker.Instance.mainCam.transform.position = Vector3.zero;
+		}
+		if (PathMaker.Instance.coordMenu != null) PathMaker.Instance.coordMenu.SetActive(true);
+		yield return null;
+		yield return null;
+
+		CoordSelector coords = UnityEngine.Object.FindObjectOfType<CoordSelector>(true);
+		if (coords == null)
+		{
+			Debug.LogError("[Benchmark] no CoordSelector in scene");
+			WriteBenchmarkRow("FAILED: no coord menu", 0, 0, 0, 0, 0);
+			Quit();
+			yield break;
+		}
+		coords.LoadCoords();
+
+		//farm: wait for the rover to spawn and the props to finish placing
+		while ((PathMaker.Instance.rover == null) && Time.unscaledTime < deadline) yield return null;
+		ObjectPlacer placer = UnityEngine.Object.FindObjectOfType<ObjectPlacer>();
+		while (placer != null && !placer.finished && Time.unscaledTime < deadline) yield return null;
+		yield return new WaitForSecondsRealtime(3f);
+
+		//plot: a 20x20 m field just ahead of the rover
+		if (PathMaker.Instance.rover != null && PathMaker.Instance.manip != null && PathMaker.Instance.manip.plotHelperPrefab != null)
+		{
+			GameObject crop = PathMaker.Instance.selectedCrop;
+			if (crop == null && PathMaker.Instance.cropList != null && PathMaker.Instance.cropList.Count > 0) crop = PathMaker.Instance.cropList[0];
+			if (crop != null)
+			{
+				PathMaker.Instance.selectedCrop = crop;
+				Transform rover = PathMaker.Instance.rover.transform;
+				GameObject helperGo = UnityEngine.Object.Instantiate(PathMaker.Instance.manip.plotHelperPrefab);
+				PlotHelper helper = helperGo.GetComponent<PlotHelper>();
+				if (helper != null)
+				{
+					helper.plant = crop;
+					helper.size = new Vector2(10f, 10f);
+					Vector3 flat = rover.forward; flat.y = 0f; flat.Normalize();
+					helperGo.transform.position = new Vector3(rover.position.x, 500f, rover.position.z) + flat * 16f;
+					helper.PlacePlot();
+				}
+				UnityEngine.Object.Destroy(helperGo);
+			}
+		}
+		yield return new WaitForSecondsRealtime(4f);
+
+		//a picture of what was measured, next to the CSV
+		string shotDir = string.IsNullOrEmpty(benchmarkOut) ? Application.persistentDataPath : Path.GetDirectoryName(Path.GetFullPath(benchmarkOut));
+		string shot = Path.Combine(shotDir, "benchmark_" + QualitySettings.names[QualitySettings.GetQualityLevel()].Replace(" ", "") + ".png");
+		ScreenCapture.CaptureScreenshot(shot);
+		yield return new WaitForSecondsRealtime(0.5f);
+
+		//measure
+		frameTimes.Clear();
+		double cpuSum = 0, gpuSum = 0; int timed = 0;
+		float until = Time.unscaledTime + benchmarkSeconds;
+		while (Time.unscaledTime < until)
+		{
+			yield return null;
+			frameTimes.Add(Time.unscaledDeltaTime);
+			FrameTimingManager.CaptureFrameTimings();
+			if (FrameTimingManager.GetLatestTimings(1, timing) > 0 && timing[0].gpuFrameTime > 0)
+			{
+				cpuSum += timing[0].cpuFrameTime; gpuSum += timing[0].gpuFrameTime; timed++;
+			}
+		}
+
+		float total = 0f; foreach (float f in frameTimes) total += f;
+		float avgFps = frameTimes.Count / Mathf.Max(total, 0.0001f);
+		frameTimes.Sort();
+		float p99 = frameTimes[Mathf.Clamp(Mathf.FloorToInt(frameTimes.Count * 0.99f), 0, frameTimes.Count - 1)];
+		float lowFps = 1f / Mathf.Max(p99, 0.0001f);
+		float cpu = timed > 0 ? (float)(cpuSum / timed) : 0f;
+		float gpu = timed > 0 ? (float)(gpuSum / timed) : 0f;
+
+		WriteBenchmarkRow("ok", avgFps, lowFps, cpu, gpu, frameTimes.Count);
+		Quit();
+	}
+
+	void WriteBenchmarkRow(string status, float avgFps, float lowFps, float cpuMs, float gpuMs, int frames)
+	{
+		string path = string.IsNullOrEmpty(benchmarkOut) ? Path.Combine(Application.persistentDataPath, "benchmark.csv") : benchmarkOut;
+		bool fresh = !File.Exists(path);
+		StringBuilder sb = new StringBuilder();
+		if (fresh) sb.AppendLine("time,quality,render,display,avg_fps,one_percent_low_fps,cpu_ms,gpu_ms,frames,status,gpu_name,vram_mb,cpu_name");
+		sb.AppendLine(string.Join(",", new string[] {
+			DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+			QualitySettings.names[QualitySettings.GetQualityLevel()],
+			Screen.width + "x" + Screen.height,
+			Display.main.systemWidth + "x" + Display.main.systemHeight,
+			avgFps.ToString("0.0", CultureInfo.InvariantCulture),
+			lowFps.ToString("0.0", CultureInfo.InvariantCulture),
+			cpuMs.ToString("0.00", CultureInfo.InvariantCulture),
+			gpuMs.ToString("0.00", CultureInfo.InvariantCulture),
+			frames.ToString(CultureInfo.InvariantCulture),
+			status,
+			Quote(SystemInfo.graphicsDeviceName),
+			SystemInfo.graphicsMemorySize.ToString(CultureInfo.InvariantCulture),
+			Quote(SystemInfo.processorType) }));
+		try
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(path));
+			File.AppendAllText(path, sb.ToString());
+		}
+		catch (Exception e) { Debug.LogError("[Benchmark] could not write " + path + ": " + e.Message); }
+		Debug.Log("[Benchmark] " + status + " quality=" + QualitySettings.names[QualitySettings.GetQualityLevel()] + " render=" + Screen.width + "x" + Screen.height
+			+ " avg=" + avgFps.ToString("0.0", CultureInfo.InvariantCulture) + "fps low1%=" + lowFps.ToString("0.0", CultureInfo.InvariantCulture)
+			+ "fps cpu=" + cpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms gpu=" + gpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms -> " + path);
+	}
+
+	static string Quote(string s) { return "\"" + (s ?? "").Replace("\"", "'") + "\""; }
+
+	static void Quit()
+	{
+#if UNITY_EDITOR
+		UnityEditor.EditorApplication.isPlaying = false;
+#else
+		Application.Quit();
+#endif
 	}
 }

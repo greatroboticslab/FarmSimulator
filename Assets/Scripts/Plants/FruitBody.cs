@@ -16,11 +16,6 @@ public class FruitBody : MonoBehaviour
         transform.localScale = new Vector3(1,1,1);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 	
 	public void Detach() {
 		rb.isKinematic = false;

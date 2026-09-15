@@ -25,6 +25,7 @@ public class RoverControls : MonoBehaviour
 	public TMP_Dropdown tractionDropdown;
 	
 	private float timeSinceRecordingStarted = 0f;
+	private float nextHudRefresh;
 	
     // Start is called before the first frame update
     void Start()
@@ -53,6 +54,9 @@ public class RoverControls : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+		//toggle sync and the friction readout only need ~10 updates a second
+		if(Time.unscaledTime < nextHudRefresh) return;
+		nextHudRefresh = Time.unscaledTime + 0.1f;
         if(PathMaker.Instance != null && PathMaker.Instance.rover != null) {
 			if(frictionDisplay != null) frictionDisplay.text = "Friction: " + PathMaker.Instance.rover.currentFriction;
 			if(selfDriving != null) PathMaker.Instance.rover.selfDriving = selfDriving.isOn;

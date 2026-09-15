@@ -55,6 +55,9 @@ public class GraphicsSettings : MonoBehaviour
 	static Button resButton;
 	static bool showOverlay;
 
+	//-renderheight from the command line, int.MinValue when absent
+	static int heightOverride = int.MinValue;
+
 	//benchmark state
 	static bool benchmark;
 	static float benchmarkSeconds = 6f;
@@ -91,8 +94,8 @@ public class GraphicsSettings : MonoBehaviour
 		else if (PlayerPrefs.HasKey(PrefKey)) { level = Clamp(PlayerPrefs.GetInt(PrefKey)); source = "saved"; }
 		else { level = DetectTier(); source = "auto-detected"; PlayerPrefs.SetInt(PrefKey, level); PlayerPrefs.Save(); }
 
-		int forcedHeight = CommandLineInt("-renderheight", int.MinValue);
-		if (forcedHeight != int.MinValue) PlayerPrefs.SetInt(HeightPrefKey, forcedHeight);
+		//a command-line height applies to this run only; the saved choice stays
+		heightOverride = CommandLineInt("-renderheight", int.MinValue);
 
 		QualitySettings.SetQualityLevel(level, true);
 		Debug.Log("[GraphicsSettings] " + SystemSummary() + "\n[GraphicsSettings] quality " + QualitySettings.names[level] + " (" + source + ")");
@@ -245,6 +248,7 @@ public class GraphicsSettings : MonoBehaviour
 
 	public static void CycleRenderHeight()
 	{
+		heightOverride = int.MinValue;
 		int current = PlayerPrefs.GetInt(HeightPrefKey, 0);
 		int idx = Array.IndexOf(HeightChoices, current);
 		int next = HeightChoices[(idx + 1 + HeightChoices.Length) % HeightChoices.Length];
@@ -400,7 +404,7 @@ public class GraphicsSettings : MonoBehaviour
 		int nativeH = Display.main.systemHeight;
 		if (nativeW <= 0 || nativeH <= 0) { nativeW = Screen.width; nativeH = Screen.height; }
 
-		int targetH = PlayerPrefs.GetInt(HeightPrefKey, 0);
+		int targetH = heightOverride != int.MinValue ? heightOverride : PlayerPrefs.GetInt(HeightPrefKey, 0);
 		if (targetH == 0) targetH = Pick(RenderHeight, level);
 
 		if (targetH <= 0 || targetH >= nativeH) { w = nativeW; h = nativeH; }

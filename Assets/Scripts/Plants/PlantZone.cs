@@ -344,6 +344,7 @@ public class PlantZone : MonoBehaviour
 	const int MinPlants = 16;
 
 	//Reduces row and column density until the plot fits the tier's budget. The
+	//Reduces row and column density until the plot fits the tier's budget. The
 	//plot keeps its size and shape; the plants in it are just spaced further apart.
 	void ApplyTriangleBudget(float halfX, float halfZ) {
 		int level = Mathf.Clamp(QualitySettings.GetQualityLevel(), 0, PlotTriangleBudget.Length - 1);
@@ -353,17 +354,46 @@ public class PlantZone : MonoBehaviour
 		int perPlant = EstimateTriangles(plant);
 		if(perPlant <= 0) return;
 
-		float plants = 4f * xDensity * yDensity * halfX * halfZ;
+		int planned = PlannedPlants(halfX, halfZ);
 		float allowed = Mathf.Max(MinPlants, budget / (float)perPlant);
-		if(plants <= allowed) return;
+		if(planned <= allowed) return;
 
-		float scale = Mathf.Sqrt(allowed / plants);
-		xDensity *= scale;
-		yDensity *= scale;
+		//the grid steps in whole rows and columns, so it rounds up: take the
+		//arithmetic scale first, then tighten until the plot really does fit
+		float startX = xDensity;
+		float startY = yDensity;
+		float scale = Mathf.Sqrt(allowed / planned);
+		for(int attempt = 0; attempt < 12; attempt++) {
+			xDensity = startX * scale;
+			yDensity = startY * scale;
+			int now = PlannedPlants(halfX, halfZ);
+			if(now < 1) {
+				//never thin a plot away completely; step back and stop
+				scale /= 0.94f;
+				xDensity = startX * scale;
+				yDensity = startY * scale;
+				break;
+			}
+			if(now <= allowed) break;
+			scale *= 0.94f;
+		}
+
 		rOffset = new Vector2(0,(1f/yDensity)/2);
 		Debug.LogWarning("PlantZone: " + plant.name + " is " + perPlant + " triangles per plant, so this plot was thinned from "
-			+ Mathf.RoundToInt(plants) + " to about " + Mathf.RoundToInt(allowed) + " plants for the "
+			+ planned + " to " + PlannedPlants(halfX, halfZ) + " plants for the "
 			+ QualitySettings.names[level] + " graphics setting. Raise the Graphics setting for a denser field.");
+	}
+
+	//How many plants the grid loops below will actually place. They step in whole
+	//rows and columns, so it is not simply the plot area times the densities.
+	int PlannedPlants(float halfX, float halfZ) {
+		float maxX = xDensity*halfX;
+		float maxY = yDensity*halfZ;
+		int rows = 0;
+		for(int _y = (int)-maxY; _y < maxY; _y++) rows++;
+		int cols = 0;
+		for(int _x = (int)-maxX; _x < maxX; _x++) cols++;
+		return rows * cols;
 	}
 
 	//Triangles one instance draws: everything active, plus the largest growth

@@ -56,7 +56,7 @@ You can place different spots or patches that have different traction values. Fo
 The simulator picks a graphics tier for your machine the first time it runs: integrated GPUs (Intel UHD/Iris, AMD Radeon Graphics/Vega) start on Very Low or Low, dedicated GPUs start on High. Two buttons on the right-hand panel of the farm view let you change this at any time, and the choice is remembered:
 
 - **Graphics: ...** cycles through Very Low, Low, Medium, High, Very High and Ultra. The tier controls shadows, grass density and distance, view distance, post-processing (bloom and anti-aliasing), the number of decorative trees, rocks and people on the farm, and how often the robot's picture-in-picture camera refreshes.
-- **Render: WxH** cycles the render resolution (automatic for the tier, 540p, 720p, 900p, 1080p, native). The picture is scaled to fill the screen. Lowering this is the most effective way to speed up an integrated GPU.
+- **Auto: WxH** (it reads **Render: WxH** once you have picked one yourself) cycles the render resolution: automatic for the tier, 540p, 720p, 900p, 1080p, native. The picture is scaled to fill the screen. Lowering this is the most effective way to speed up an integrated GPU.
 
 Press **F3** to show a frame-rate overlay with CPU and GPU frame times, the current tier and render resolution, and the GPU name. The lower tiers cap the frame rate at 60 fps so laptops do not thermal-throttle; the game also drops to 10 fps while it is not the active window.
 

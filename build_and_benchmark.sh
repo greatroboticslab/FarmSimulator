@@ -32,7 +32,25 @@ fi
 
 mkdir -p "$LOGS"
 
+# Unity allows one editor per project. If one is already open on this project
+# (an import in progress, or the editor itself), wait for it rather than
+# crashing into its lock.
+wait_for_editor() {
+	local waited=0
+	while [ -f "$PROJ/Temp/UnityLockfile" ] && tasklist 2>/dev/null | grep -qi "^Unity\.exe"; do
+		[ "$waited" = "0" ] && echo "== another Unity instance has this project open; waiting for it to close"
+		sleep 30
+		waited=$((waited + 30))
+		if [ "$waited" -ge 10800 ]; then
+			echo "   still open after three hours; close it and run this again"
+			exit 5
+		fi
+	done
+	[ "$waited" != "0" ] && echo "   free after ${waited}s"
+}
+
 run_editor() {
+	wait_for_editor
 	local what="$1" method="$2" log="$LOGS/$3.log"
 	echo "== $what"
 	"$UNITY" -batchmode -quit -projectPath "$PROJ" -executeMethod "$method" -logFile "$log" >/dev/null 2>&1

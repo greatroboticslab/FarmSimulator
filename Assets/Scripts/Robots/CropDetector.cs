@@ -38,8 +38,16 @@ public class CropDetector : MonoBehaviour
 			emitter = e.transform;
 		}
 
-		Material glow = new Material(Shader.Find("Legacy Shaders/Particles/Additive"));
-		glow.SetColor("_TintColor", laserColor);
+		//a shader looked up by name is only in a build when the project lists it
+		//as always included (Tools > Include Runtime Shaders does that). Fall
+		//back instead of failing here and throwing from Update every frame.
+		Shader glowShader = Shader.Find("Legacy Shaders/Particles/Additive");
+		if (glowShader == null) glowShader = Shader.Find("Sprites/Default");
+		if (glowShader == null) glowShader = Shader.Find("Standard");
+		if (glowShader == null) { enabled = false; return; }
+		Material glow = new Material(glowShader);
+		if (glow.HasProperty("_TintColor")) glow.SetColor("_TintColor", laserColor);
+		else glow.color = laserColor;
 
 		GameObject beamGO = new GameObject("LaserBeam");
 		beamGO.transform.SetParent(transform, false);
@@ -73,6 +81,9 @@ public class CropDetector : MonoBehaviour
 			scanTimer = scanInterval;
 			Scan();
 		}
+
+		//visuals are only built when Start got its shader
+		if (beam == null || hitDot == null || hitLight == null || emitter == null) return;
 
 		bool showLaser = laserEnabled && currentTarget != null;
 		if (beam != null) beam.enabled = showLaser;

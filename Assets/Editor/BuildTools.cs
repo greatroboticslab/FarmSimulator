@@ -13,6 +13,9 @@ public static class BuildTools
 		string dir = "Builds/Windows";
 		Directory.CreateDirectory(dir);
 
+		//shaders that scripts find by name must be listed or the player strips them
+		RuntimeShaders.Include();
+
 		BuildPlayerOptions opts = new BuildPlayerOptions
 		{
 			scenes = new[] { "Assets/Scenes/SampleScene.unity" },

@@ -9,6 +9,7 @@ public class RobotShowcase : MonoBehaviour
 
 	RobotInfo info;
 	Material ringMat;
+	string tintProperty = "_TintColor";
 	float glow;
 
 	static Texture2D ringTexture;
@@ -26,9 +27,15 @@ public class RobotShowcase : MonoBehaviour
 		ring.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 		ring.transform.localScale = new Vector3(1.9f, 1.9f, 1f);
 
-		ringMat = new Material(Shader.Find("Legacy Shaders/Particles/Additive"));
+		//the additive shader is stripped from builds unless the project lists it
+		//(Tools > Include Runtime Shaders); fall back rather than throw in Start
+		Shader ringShader = Shader.Find("Legacy Shaders/Particles/Additive");
+		if (ringShader == null) ringShader = Shader.Find("Sprites/Default");
+		if (ringShader == null) { Object.Destroy(ring); enabled = false; return; }
+		ringMat = new Material(ringShader);
 		ringMat.mainTexture = GetRingTexture();
-		ringMat.SetColor("_TintColor", ringColor * 0.45f);
+		tintProperty = ringMat.HasProperty("_TintColor") ? "_TintColor" : "_Color";
+		ringMat.SetColor(tintProperty, ringColor * 0.45f);
 		ring.GetComponent<MeshRenderer>().material = ringMat;
 	}
 
@@ -41,7 +48,7 @@ public class RobotShowcase : MonoBehaviour
 		if (ringMat != null)
 		{
 			float pulse = hovered ? 1f + 0.2f * Mathf.Sin(Time.time * 6f) : 1f;
-			ringMat.SetColor("_TintColor", ringColor * Mathf.Lerp(0.45f, 1.4f * pulse, glow));
+			ringMat.SetColor(tintProperty, ringColor * Mathf.Lerp(0.45f, 1.4f * pulse, glow));
 		}
 	}
 

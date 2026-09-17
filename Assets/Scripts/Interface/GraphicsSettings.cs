@@ -277,8 +277,9 @@ public class GraphicsSettings : MonoBehaviour
 
 		int w, h;
 		TargetResolution(QualitySettings.GetQualityLevel(), out w, out h);
-		string auto = PlayerPrefs.GetInt(HeightPrefKey, 0) == 0 ? " (auto)" : "";
-		SetLabel(resButton, "Render: " + w + "x" + h + auto);
+		//short enough to fit the HUD button on one line
+		bool automatic = heightOverride == int.MinValue && PlayerPrefs.GetInt(HeightPrefKey, 0) == 0;
+		SetLabel(resButton, (automatic ? "Auto: " : "Render: ") + w + "x" + h);
 	}
 
 	static void SetLabel(Button b, string text)

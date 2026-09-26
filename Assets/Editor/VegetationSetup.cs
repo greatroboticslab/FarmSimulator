@@ -117,6 +117,39 @@ public static class VegetationSetup
 	{
 		ConfigureLeafTexture("Assets/Textures/Ground/GrassBlades.png", 0.45f);
 		ConfigureLeafTexture("Assets/Textures/Ground/DryBlades.png", 0.45f);
+		//each tuft copies the sheen of the ground it grows on
+		ConfigureTuftMaterial("Assets/Terrain/GrassTuftMat.mat", "Assets/Terrain/Grass.terrainlayer");
+		ConfigureTuftMaterial("Assets/Terrain/DryTuftMat.mat", "Assets/Terrain/DryGrass.terrainlayer");
+		AssetDatabase.SaveAssets();
+	}
+
+	//FarmSim/Grass: Lambert plus the terrain's Disney diffuse and sheen,
+	//translucency and the wind.
+	//The tint is a calibration, measured against the ground around the tufts in
+	//the tour shots (linear luminance, tuft / ground): at 1.0 the tufts sat at
+	//0.50-0.68 of the ground in the midday views. The lawn texture's average
+	//includes the shade between its blades; a tuft's blades are lit directly,
+	//so they are brighter: 1.25 puts blade luminance at 0.081 against the
+	//lawn's 0.074.
+	static void ConfigureTuftMaterial(string path, string layerPath)
+	{
+		Material mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+		Shader grass = Shader.Find("FarmSim/Grass");
+		if (mat == null || grass == null) { Debug.LogWarning("VegetationSetup: cannot configure " + path); return; }
+		TerrainLayer layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(layerPath);
+		Texture tex = mat.mainTexture;
+		mat.shader = grass;
+		mat.mainTexture = tex;
+		mat.SetFloat("_Cutoff", 0.45f);
+		mat.SetColor("_Color", new Color(1.12f, 1.12f, 1.12f, 1f));
+		mat.SetFloat("_Translucency", 1f);
+		mat.SetColor("_TranslucencyColor", new Color(0.95f, 1f, 0.6f));
+		mat.SetFloat("_Glossiness", layer != null ? layer.smoothness : 0.1f);
+		mat.SetFloat("_WindWeight", 1f);
+		//instanced terrain details silently draw nothing without it
+		mat.enableInstancing = true;
+		EditorUtility.SetDirty(mat);
+		Debug.Log("VegetationSetup: " + path + " -> FarmSim/Grass, sheen smoothness " + mat.GetFloat("_Glossiness") + " from " + layerPath);
 	}
 
 	static GameObject MakePrefab(GameObject model, string treeName, Species sp, out int lod0Triangles)

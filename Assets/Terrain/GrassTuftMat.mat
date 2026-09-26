@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: GrassTuftMat
-  m_Shader: {fileID: 51, guid: 0000000000000000f000000000000000, type: 0}
+  m_Shader: {fileID: 4800000, guid: 58529c00f7143344db742b6482e41488, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -30,6 +30,10 @@ Material:
     m_Ints: []
     m_Floats:
     - _Cutoff: 0.45
+    - _Glossiness: 0.12
+    - _Translucency: 1
+    - _WindWeight: 1
     m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 1.12, g: 1.12, b: 1.12, a: 1}
+    - _TranslucencyColor: {r: 0.95, g: 1, b: 0.6, a: 1}
   m_BuildTextureStacks: []

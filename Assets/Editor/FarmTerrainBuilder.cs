@@ -376,7 +376,10 @@ public static class FarmTerrainBuilder
 		mesh.RecalculateBounds();
 		AssetDatabase.CreateAsset(mesh, "Assets/Terrain/" + name + "Mesh.asset");
 
-		Material mat = new Material(Shader.Find("Legacy Shaders/Transparent/Cutout/Diffuse"));
+		//FarmSim/Grass; Tools > Configure Grass Tuft Textures (VegetationSetup)
+		//then sets its sheen from the layer and its calibrated tint
+		Shader grassShader = Shader.Find("FarmSim/Grass");
+		Material mat = new Material(grassShader != null ? grassShader : Shader.Find("Legacy Shaders/Transparent/Cutout/Diffuse"));
 		mat.mainTexture = tex;
 		mat.SetFloat("_Cutoff", 0.45f);
 		mat.enableInstancing = true;

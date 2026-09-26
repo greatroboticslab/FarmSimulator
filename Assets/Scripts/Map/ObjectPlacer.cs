@@ -13,7 +13,8 @@ public class PropEntry {
 //Scatters decorative props (trees, rocks, people) over the loaded farm.
 //The prop count follows the graphics tier, animated people are capped,
 //spawning is spread across frames so the farm does not freeze while it
-//fills in, and off-screen people stop animating.
+//fills in, and off-screen people stop animating. A prop entry carrying
+//PropVariants spawns one of several models with a random heading and size.
 public class ObjectPlacer : MonoBehaviour
 {
 
@@ -39,26 +40,59 @@ public class ObjectPlacer : MonoBehaviour
 	private int animatedSpawned;
 	private bool[] animatedEntry;
 
+	//props (layer "Obstacle") must not land on each other: a rock used to be able
+	//to come to rest on top of a tree's trunk collider
+	const int PropLayer = 8;
+
 	public void SpawnProp(GameObject prop) {
+		SpawnProp(prop, new System.Random(Random.Range(int.MinValue, int.MaxValue)));
+	}
+
+	//Every random number comes from rnd, which Populate seeds per prop index, so a
+	//lower tier (fewer props) shows a subset of the same layout, not a reshuffle.
+	void SpawnProp(GameObject prop, System.Random rnd) {
 		if(prop == null) return;
 
-		GameObject newProp = Instantiate(prop);
-		newProp.transform.parent = transform;
+		//one list entry can stand for several models; see PropVariants
+		PropVariants variants = prop.GetComponent<PropVariants>();
+		GameObject model = variants != null ? variants.Pick(rnd) : null;
+		if(model == null) model = prop;
 
-		Vector3 rayPos = new Vector3(Random.Range(0,mapSize.x), 300, Random.Range(0,mapSize.y));
+		Vector3 rayPos = new Vector3((float)rnd.NextDouble() * mapSize.x, 300, (float)rnd.NextDouble() * mapSize.y);
+		float yaw = (float)rnd.NextDouble() * 360f;
+		float size = 1f;
+		if(variants != null) size = Mathf.Lerp(variants.scaleRange.x, variants.scaleRange.y, (float)rnd.NextDouble());
+		float tiltX = ((float)rnd.NextDouble() - 0.5f) * 20f;
+		float tiltZ = ((float)rnd.NextDouble() - 0.5f) * 20f;
 
 		RaycastHit hit;
 
 		float alt = 0;
+		Vector3 groundNormal = Vector3.up;
 
 		//bounded ray instead of Mathf.Infinity: the terrain is never more than a
 		//few hundred meters below the cast origin
-		if (Physics.Raycast(rayPos, Vector3.down, out hit, 1000f, ~0, QueryTriggerInteraction.Ignore))
+		if (Physics.Raycast(rayPos, Vector3.down, out hit, 1000f, ~(1 << PropLayer), QueryTriggerInteraction.Ignore))
 		{
 			alt = hit.point.y;
+			groundNormal = hit.normal;
 		}
 
-		newProp.transform.position = new Vector3(rayPos.x, alt, rayPos.z);
+		GameObject newProp = Instantiate(model);
+
+		Quaternion rot = model.transform.rotation;
+		if(variants == null || variants.randomYaw) rot = Quaternion.Euler(0f, yaw, 0f) * rot;
+		if(variants != null && variants.alignToGround)
+			rot = Quaternion.FromToRotation(Vector3.up, groundNormal) * Quaternion.Euler(tiltX, 0f, tiltZ) * rot;
+		newProp.transform.SetPositionAndRotation(new Vector3(rayPos.x, alt, rayPos.z), rot);
+		newProp.transform.localScale = model.transform.localScale * size;
+
+		if(variants != null && variants.sinkFraction > 0f) {
+			Renderer r = newProp.GetComponentInChildren<Renderer>();
+			if(r != null) newProp.transform.position -= groundNormal * (r.bounds.size.y * variants.sinkFraction);
+		}
+
+		newProp.transform.SetParent(transform, true);
 
 		//people that are not on screen do not need their skeleton evaluated
 		foreach (Animator a in newProp.GetComponentsInChildren<Animator>(true))
@@ -102,7 +136,6 @@ public class ObjectPlacer : MonoBehaviour
     }
 
 	IEnumerator Populate() {
-		Random.InitState(seed);
 		float maxVal = 0;
 
 		animatedEntry = new bool[props.Count];
@@ -126,7 +159,10 @@ public class ObjectPlacer : MonoBehaviour
 
 		for(int i = 0; i < total; i++) {
 
-			float rVal = Random.Range(0,maxVal);
+			//each prop gets its own seeded generator, so skipping one (animated
+			//budget) or placing fewer (lower tier) leaves every other prop where it is
+			System.Random rnd = new System.Random(unchecked(seed * 486187739 + i * 16777619 + 12345));
+			float rVal = (float)(rnd.NextDouble() * maxVal);
 			float rIt  = 0;
 
 			for(int j = 0; j < props.Count; j++) {
@@ -134,12 +170,11 @@ public class ObjectPlacer : MonoBehaviour
 
 				if(rVal >= rIt && rVal < rIt + props[j].weight) {
 					if(animatedEntry[j]) {
-						//over budget: skip the person entirely rather than substitute,
-						//so the seeded layout of everything else stays identical
+						//over budget: skip the person entirely rather than substitute
 						if(animatedSpawned >= animatedBudget) break;
 						animatedSpawned++;
 					}
-					SpawnProp(props[j].prefab);
+					SpawnProp(props[j].prefab, rnd);
 					sinceYield++;
 					break;
 				}

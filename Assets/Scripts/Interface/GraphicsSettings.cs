@@ -51,6 +51,7 @@ public class GraphicsSettings : MonoBehaviour
 	static readonly int[]   AnimatedProps  = { 0, 0, 12, 40, 60, 80 };
 	static readonly float[] PipFps         = { 5f, 8f, 12f, 30f, 60f, 0f };         //0 = every frame
 	static readonly float[] PipShadowDist  = { 0f, 0f, 20f, 60f, 100f, 170f };
+	static readonly int[]   MinLod         = { 1, 0, 0, 0, 0, 0 };             //QualitySettings.maximumLODLevel
 
 	//render heights offered by the Resolution button; 0 = automatic, -1 = native
 	static readonly int[] HeightChoices = { 0, 540, 720, 900, 1080, -1 };
@@ -309,6 +310,9 @@ public class GraphicsSettings : MonoBehaviour
 		int level = QualitySettings.GetQualityLevel();
 
 		QualitySettings.shadowDistance = Pick(ShadowDist, level);
+		//the generated trees' full-detail LOD is several thousand triangles of
+		//alpha-tested cards; Very Low starts at the reduced one
+		QualitySettings.maximumLODLevel = Pick(MinLod, level);
 
 		//frame pacing: capped and vsync-free on the low tiers so a laptop does
 		//not run flat out and throttle; vsync on the high tiers

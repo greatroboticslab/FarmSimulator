@@ -42,6 +42,9 @@ public static class BenchmarkTour
 		yield return Shot(cam, dir, prefix + "_overview", r - f * 70f + Vector3.up * 45f, r + f * 20f, 60f);
 		yield return Shot(cam, dir, prefix + "_robot", r + right * 2.6f - f * 2.4f + Vector3.up * 1.6f, r + Vector3.up * 0.7f, 50f);
 		yield return Shot(cam, dir, prefix + "_backlit", r + sunFlat * 9f + Vector3.up * 2.5f, r - sunFlat * 30f, 60f);
+		//the same view again a moment later: any difference in the foliage is wind
+		yield return new WaitForSecondsRealtime(0.7f);
+		yield return Shot(cam, dir, prefix + "_backlit2", r + sunFlat * 9f + Vector3.up * 2.5f, r - sunFlat * 30f, 60f);
 
 		cam.transform.SetPositionAndRotation(savedPos, savedRot);
 		cam.fieldOfView = savedFov;

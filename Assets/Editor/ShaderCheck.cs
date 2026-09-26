@@ -14,7 +14,7 @@ public static class ShaderCheck
 	static readonly string[] Shaders =
 	{
 		"FarmSim/Foliage", "FarmSim/Bark", "FarmSim/RobotSurface", "FarmSim/TriplanarMetal",
-		"Custom/WaterTrueDepthFade",
+		"Custom/WaterTrueDepthFade", "Hidden/FarmSim/ScreenSpaceShadows",
 	};
 
 	[MenuItem("Tools/Check Project Shaders")]

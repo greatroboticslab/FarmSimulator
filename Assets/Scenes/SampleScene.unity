@@ -12186,6 +12186,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be56511ad2e31ce4b9cc741cca64c1ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cloudSpeed: 6
   presets:
   - name: Midday
     skybox: {fileID: 2100000, guid: 7383646a9d4bfa547ac7410f663d5fbd, type: 2}
@@ -12194,6 +12195,8 @@ MonoBehaviour:
     sunIntensity: 1.1828789
     shadowStrength: 1
     fogColor: {r: 0.6836088, g: 0.70698494, b: 0.76986235, a: 1}
+    cloudShadows: {fileID: 2800000, guid: 392993a9cccf542489db50652c5080c9, type: 3}
+    cloudShadowSize: 600
   - name: Late afternoon
     skybox: {fileID: 2100000, guid: f12af583f1ce8e945bb1e76eddcd4b37, type: 2}
     sunEuler: {x: 18.264055, y: 205, z: 0}
@@ -12201,6 +12204,8 @@ MonoBehaviour:
     sunIntensity: 1.4351554
     shadowStrength: 1
     fogColor: {r: 0.54258925, g: 0.55511767, b: 0.53148586, a: 1}
+    cloudShadows: {fileID: 0}
+    cloudShadowSize: 600
   - name: Overcast
     skybox: {fileID: 2100000, guid: 280b5c9254e9194479877479854c8bbb, type: 2}
     sunEuler: {x: 55, y: 205, z: 0}
@@ -12208,7 +12213,10 @@ MonoBehaviour:
     sunIntensity: 0
     shadowStrength: 0
     fogColor: {r: 0.7044139, g: 0.6736672, b: 0.64228415, a: 1}
+    cloudShadows: {fileID: 0}
+    cloudShadowSize: 600
   sun: {fileID: 705507994}
+  cloudShadowShader: {fileID: 4800000, guid: a092be474057644498c2f62279ea6d05, type: 3}
 --- !u!1 &719362572
 GameObject:
   m_ObjectHideFlags: 0

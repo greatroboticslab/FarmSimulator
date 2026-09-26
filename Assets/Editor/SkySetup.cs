@@ -42,7 +42,12 @@ public static class SkySetup
 		//mean of the 0-3 degree band above the horizon, linear
 		public Color horizon;
 		public bool hasSun;
+		//a partly cloudy sky casts moving cloud shadows (tools/build_cloud_shadows.py)
+		public bool clouds;
 	}
+
+	const string CloudTexture = "Assets/Textures/Sky/CloudShadows.png";
+	const string CloudShader = "Assets/Shaders/FarmScreenSpaceShadows.shader";
 
 	static readonly Sky[] Skies =
 	{
@@ -51,7 +56,7 @@ public static class SkySetup
 			name = "Midday", file = "Assets/Textures/Sky/kloofendal_48d_partly_cloudy_farm_4k.hdr",
 			material = "Assets/Terrain/FarmSkyHDRI.mat", exposure = 1f,
 			sunLinear = 1.447f, sunColour = new Color(0.992f, 1f, 0.912f),
-			horizon = new Color(0.425f, 0.458f, 0.554f), hasSun = true,
+			horizon = new Color(0.425f, 0.458f, 0.554f), hasSun = true, clouds = true,
 		},
 		new Sky
 		{
@@ -77,6 +82,7 @@ public static class SkySetup
 		if (sun == null) { Debug.LogError("SkySetup: no directional light in the scene"); return; }
 
 		List<SkyPresets.Preset> presets = new List<SkyPresets.Preset>();
+		Texture2D clouds = ImportCloudShadows(CloudTexture);
 		foreach (Sky sky in Skies)
 		{
 			Cubemap cube = ImportSky(sky.file);
@@ -137,6 +143,8 @@ public static class SkySetup
 				p.shadowStrength = 0f;
 			}
 			p.sunEuler = new Vector3(elevation, SunYaw, 0f);
+			p.cloudShadows = sky.clouds ? clouds : null;
+			p.cloudShadowSize = 600f;
 			Color h = sky.horizon * sky.exposure;
 			p.fogColor = new Color(Mathf.LinearToGammaSpace(h.r), Mathf.LinearToGammaSpace(h.g), Mathf.LinearToGammaSpace(h.b));
 			EditorUtility.SetDirty(mat);
@@ -152,6 +160,9 @@ public static class SkySetup
 		if (holder == null) holder = sun.gameObject.AddComponent<SkyPresets>();
 		holder.presets = presets.ToArray();
 		holder.sun = sun;
+		//referenced from the scene so builds include it
+		holder.cloudShadowShader = AssetDatabase.LoadAssetAtPath<Shader>(CloudShader);
+		if (holder.cloudShadowShader == null) Debug.LogWarning("SkySetup: no cloud shadow shader at " + CloudShader);
 		EditorUtility.SetDirty(holder);
 
 		//the scene's own settings are the first preset, so the editor view and a
@@ -163,6 +174,9 @@ public static class SkySetup
 		sun.intensity = first.sunIntensity;
 		sun.shadows = LightShadows.Soft;
 		sun.shadowStrength = first.shadowStrength;
+		//clouds go through the shadow pass (SkyPresets), never a cookie: a cookie
+		//on the sun draws every lit object twice in the forward path
+		sun.cookie = null;
 		RenderSettings.sun = sun;
 		RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
 		RenderSettings.ambientIntensity = 1f;
@@ -204,6 +218,33 @@ public static class SkySetup
 		imp.textureCompression = TextureImporterCompression.CompressedHQ;
 		if (changed) imp.SaveAndReimport();
 		return AssetDatabase.LoadAssetAtPath<Cubemap>(path);
+	}
+
+	//The cloud pattern FarmScreenSpaceShadows.shader reads: one linear channel
+	//(R8, 256 KB at 512), repeating so the drifting pattern tiles, and no mips:
+	//the shader samples it per pixel of a depth buffer, where a depth edge would
+	//otherwise pull in a blurred mip and outline every silhouette
+	static Texture2D ImportCloudShadows(string path)
+	{
+		TextureImporter imp = AssetImporter.GetAtPath(path) as TextureImporter;
+		if (imp == null) { Debug.LogWarning("SkySetup: no cloud shadows at " + path); return null; }
+		TextureImporterSettings s = new TextureImporterSettings();
+		imp.ReadTextureSettings(s);
+		if (imp.textureType != TextureImporterType.SingleChannel || s.singleChannelComponent != TextureImporterSingleChannelComponent.Red
+			|| imp.wrapMode != TextureWrapMode.Repeat || imp.mipmapEnabled || imp.sRGBTexture)
+		{
+			s.textureType = TextureImporterType.SingleChannel;
+			s.singleChannelComponent = TextureImporterSingleChannelComponent.Red;
+			s.textureShape = TextureImporterShape.Texture2D;
+			s.alphaSource = TextureImporterAlphaSource.None;
+			s.sRGBTexture = false;
+			s.wrapMode = TextureWrapMode.Repeat;
+			s.filterMode = FilterMode.Bilinear;
+			s.mipmapEnabled = false;
+			imp.SetTextureSettings(s);
+			imp.SaveAndReimport();
+		}
+		return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
 	}
 
 	static Light FindSun()

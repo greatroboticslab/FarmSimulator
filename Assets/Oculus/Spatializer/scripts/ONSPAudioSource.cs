@@ -47,7 +47,16 @@ public class ONSPAudioSource : MonoBehaviour
     static void OnBeforeSceneLoadRuntimeMethod()
     {
 #if !ONSP_UNSUPPORTED_PLATFORM
-        OSP_SetGlobalVoiceLimit(ONSPSettings.Instance.voiceLimit);
+        // FarmSim: the Windows player ships without the native spatializer
+        // (nothing in the project uses ONSPAudioSource), and this hook runs
+        // regardless, so every start logged a DllNotFoundException.
+        try
+        {
+            OSP_SetGlobalVoiceLimit(ONSPSettings.Instance.voiceLimit);
+        }
+        catch (DllNotFoundException)
+        {
+        }
 #endif
     }
 

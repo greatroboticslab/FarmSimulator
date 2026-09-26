@@ -55,11 +55,11 @@ def jitter(rng, s):
     return Vector((rng.gauss(0, s), rng.gauss(0, s), rng.gauss(0, s)))
 
 
-def tube(m, pts, r0, r1, sides, flex0, flex1, ao, phase):
-    """A thin tube along pts, stem-strip UVs."""
+def tube(m, pts, r0, r1, sides, flex0, flex1, ao, phase, uv=None, v_len=0.6):
+    """A thin tube along pts; the strip's UVs run over v_len metres."""
     if len(pts) < 2:
         return
-    u0, u1, v0, v1 = STEM_UV
+    u0, u1, v0, v1 = uv or STEM_UV
     t_prev = (pts[1] - pts[0]).normalized()
     n_prev = t_prev.orthogonal().normalized()
     rings = []
@@ -81,7 +81,7 @@ def tube(m, pts, r0, r1, sides, flex0, flex1, ao, phase):
             a = 2 * math.pi * j / sides
             off = n_prev * math.cos(a) + b * math.sin(a)
             ring.append(m.vert(p + off * r, off, (ao, flex0 + (flex1 - flex0) * f, phase, 1)))
-        rings.append((ring, v0 + (v1 - v0) * min(1.0, length / 0.6)))
+        rings.append((ring, v0 + (v1 - v0) * min(1.0, length / v_len)))
     for i in range(len(rings) - 1):
         (ra, va), (rb, vb) = rings[i], rings[i + 1]
         for j in range(sides):
@@ -233,6 +233,149 @@ def soybean(rng, dead):
     return m
 
 
+# ---------------------------------------------------------------------------
+# corn (atlas from build_crop_textures.py: leaf strips on the left half, husk top
+# right, stalk / tassel / silk strips bottom right)
+
+CORN_LEAF_U = [(k * 170 + 1) / 1024.0 for k in range(3)]
+CORN_LEAF_W = 168 / 1024.0
+CORN_LEAF_V = (4 / 1024.0, 1020 / 1024.0)
+CORN_HUSK = (0.5, 1.0, 0.5, 1.0)
+CORN_STALK = (0.5, 0.625, 0.0, 0.5)
+CORN_TASSEL = (0.625, 0.75, 0.0, 0.5)
+CORN_SILK = (0.75, 0.875, 0.0, 0.5)
+# the drawn leaf is at most 42% as wide as its strip
+CORN_LEAF_FILL = 0.42
+
+
+def corn_leaf(m, rng, attach, azimuth, length, width, rise, ao, phase):
+    """A leaf as a V-folded ribbon: up along the stalk for its sheath, then out
+    and over, drooping toward the tip. The drawn leaf's alpha does the taper."""
+    horiz = Vector((math.cos(azimuth), math.sin(azimuth), 0))
+    ribbon = width / CORN_LEAF_FILL
+    k = rng.randrange(3)
+    u0 = CORN_LEAF_U[k]
+    u1 = u0 + CORN_LEAF_W
+    um = (u0 + u1) / 2
+    v0, v1 = CORN_LEAF_V
+    segs = 10
+    out_angle = math.radians(rng.uniform(28, 44))
+    droop = rng.uniform(0.9, 1.5)
+    twist = math.radians(rng.uniform(-25, 25))
+    rows = []
+    p = attach.copy()
+    for i in range(segs + 1):
+        t = i / segs
+        # direction: starts up the stalk, bends out, then down past horizontal
+        tilt = out_angle * min(1.0, t * 4) + droop * max(0.0, t - 0.3) ** 1.3
+        d = (UP * math.cos(tilt) + horiz * math.sin(tilt)).normalized()
+        if i > 0:
+            p = p + d * (length / segs)
+        side = horiz.cross(UP).normalized()
+        side = (Matrix.Rotation(twist * t, 3, d) @ side).normalized()
+        nrm = side.cross(d).normalized()
+        if nrm.dot(UP) < 0 and t > 0.2:
+            nrm = -nrm
+        fold = ribbon * 0.12
+        flex = 0.35 + 0.65 * t
+        col = (ao * (0.8 + 0.2 * t), flex, phase, 1)
+        left = m.vert(p - side * ribbon / 2 + nrm * fold, (nrm - side * 0.3), col)
+        mid = m.vert(p, nrm, col)
+        right = m.vert(p + side * ribbon / 2 + nrm * fold, (nrm + side * 0.3), col)
+        rows.append((left, mid, right, v0 + (v1 - v0) * t))
+    for i in range(segs):
+        (l0, m0, r0, va), (l1, m1, r1, vb) = rows[i], rows[i + 1]
+        m.tri(l0, m0, m1, [(u0, va), (um, va), (um, vb)])
+        m.tri(l0, m1, l1, [(u0, va), (um, vb), (u0, vb)])
+        m.tri(m0, r0, r1, [(um, va), (u1, va), (u1, vb)])
+        m.tri(m0, r1, m1, [(um, va), (u1, vb), (um, vb)])
+
+
+def card_pair(m, base, direction, height, width, uv, flex0, flex1, ao, phase, rot=0.0):
+    """Two crossed quads standing on base along direction (tassel, silk)."""
+    u0, u1, v0, v1 = uv
+    d = direction.normalized()
+    s1 = (Matrix.Rotation(rot, 3, d) @ d.orthogonal()).normalized()
+    s2 = d.cross(s1).normalized()
+    for s in (s1, s2):
+        n = s.cross(d).normalized()
+        a = m.vert(base - s * width / 2, n, (ao, flex0, phase, 1))
+        b = m.vert(base + s * width / 2, n, (ao, flex0, phase, 1))
+        c = m.vert(base + s * width / 2 + d * height, n, (ao, flex1, phase, 1))
+        e = m.vert(base - s * width / 2 + d * height, n, (ao, flex1, phase, 1))
+        m.tri(a, b, c, [(u0, v0), (u1, v0), (u1, v1)])
+        m.tri(a, c, e, [(u0, v0), (u1, v1), (u0, v1)])
+
+
+def corn_stalk(rng):
+    m = Mesh()
+    H = rng.uniform(2.3, 2.45)
+    lean = Vector((rng.uniform(-0.03, 0.03), rng.uniform(-0.03, 0.03), 1)).normalized()
+    pts = [Vector((0, 0, -0.1))]
+    for k in range(1, 13):
+        z = H * k / 12
+        pts.append(Vector((lean.x * z, lean.y * z, z)))
+    # the stalk strip runs once over the whole stalk
+    tube(m, pts, 0.024, 0.009, 8, 0.0, 0.5, 0.75, 0.0, uv=CORN_STALK, v_len=H + 0.1)
+
+    n_leaves = rng.randint(12, 14)
+    az0 = rng.uniform(0, 2 * math.pi)
+    for k in range(n_leaves):
+        t = k / (n_leaves - 1)
+        z = H * (0.1 + 0.68 * t)
+        at = Vector((lean.x * z, lean.y * z, z))
+        # distichous: two ranks, 180 degrees apart, the plane drifting slowly
+        az = az0 + (math.pi if k % 2 else 0.0) + t * 0.6 + rng.uniform(-0.25, 0.25)
+        # middle leaves are the longest
+        length = (0.55 + 0.42 * math.sin(math.pi * min(1.0, 0.15 + t))) * rng.uniform(0.92, 1.08)
+        width = 0.085 * rng.uniform(0.9, 1.1) * (0.8 + 0.3 * math.sin(math.pi * t))
+        corn_leaf(m, rng, at, az, length, width, 0.0, 0.55 + 0.45 * t, rng.random())
+
+    # tassel at the top
+    top = pts[-1]
+    for k in range(3):
+        d = (UP + Vector((rng.uniform(-0.3, 0.3), rng.uniform(-0.3, 0.3), 0))).normalized()
+        card_pair(m, top - UP * 0.05, d, rng.uniform(0.32, 0.4), 0.14, CORN_TASSEL, 0.5, 0.8, 1.0, rng.random(),
+                  rot=k * 0.6)
+    return m
+
+
+def corn_ear(rng):
+    """A husked ear with silk, long axis Z, matching corn_cob.obj's extent
+    (29 cm long, centred a little above 0)."""
+    m = Mesh()
+    z0, z1 = -0.13, 0.16
+    profile = []
+    segs = 10
+    for i in range(segs + 1):
+        t = i / segs
+        r = 0.012 + 0.024 * math.sin(math.pi * min(1.0, t * 0.95 + 0.05)) ** 0.8
+        profile.append((z0 + (z1 - z0) * t, r))
+    u0, u1, v0, v1 = CORN_HUSK
+    sides = 9
+    rings = []
+    for i, (z, r) in enumerate(profile):
+        ring = []
+        for j in range(sides + 1):
+            a = 2 * math.pi * j / sides
+            off = Vector((math.cos(a), math.sin(a), 0))
+            wob = 1.0 + 0.06 * math.sin(a * 3 + z * 40)
+            ring.append(m.vert(Vector((0, 0, z)) + off * r * wob, off, (0.8, 0.4, 0.3, 1)))
+        rings.append((ring, v0 + (v1 - v0) * i / segs))
+    for i in range(segs):
+        (ra, va), (rb, vb) = rings[i], rings[i + 1]
+        for j in range(sides):
+            ua = u0 + (u1 - u0) * j / sides
+            ub = u0 + (u1 - u0) * (j + 1) / sides
+            m.tri(ra[j], ra[j + 1], rb[j + 1], [(ua, va), (ub, va), (ub, vb)])
+            m.tri(ra[j], rb[j + 1], rb[j], [(ua, va), (ub, vb), (ua, vb)])
+    # silk spilling from the tip: the strip hangs from its top edge, so the
+    # cards are placed tip-down from just above the husk
+    card_pair(m, Vector((0, 0, z1 + 0.06)), Vector((0.2, 0, -1)), 0.09, 0.07,
+              (CORN_SILK[0], CORN_SILK[1], CORN_SILK[3], CORN_SILK[2]), 0.5, 0.5, 0.9, 0.0)
+    return m
+
+
 def make_object(name, m, material):
     me = bpy.data.meshes.new(name)
     me.from_pydata([tuple(v) for v in m.v], [], m.faces)
@@ -343,8 +486,25 @@ def main():
         for o in list(bpy.data.objects):
             if o not in objs:
                 bpy.data.objects.remove(o)
-    bpy.ops.object.select_all(action="SELECT")
-    kwargs = dict(filepath=os.path.join(OUT, "Soybean.fbx"), use_selection=True, object_types={"MESH"},
+    export(objs, "Soybean.fbx")
+    for o in objs:
+        bpy.data.objects.remove(o)
+
+    corn = []
+    for name, build in (("CornStalk", corn_stalk), ("CornEar", corn_ear)):
+        m = build(random.Random(7))
+        corn.append(make_object(name, m, bpy.data.materials.new(name)))
+        zs = [v.z for v in m.v]
+        print("CROP %s: %d triangles, height %.2f m" % (name, len(m.faces), max(zs) - min(zs)))
+    export(corn, "Corn.fbx")
+    print("DONE")
+
+
+def export(objs, filename):
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs:
+        o.select_set(True)
+    kwargs = dict(filepath=os.path.join(OUT, filename), use_selection=True, object_types={"MESH"},
                   axis_forward="-Z", axis_up="Y", bake_space_transform=True,
                   apply_scale_options="FBX_SCALE_ALL", mesh_smooth_type="OFF",
                   use_mesh_modifiers=False, add_leaf_bones=False, path_mode="STRIP")
@@ -352,7 +512,6 @@ def main():
         bpy.ops.export_scene.fbx(colors_type="LINEAR", **kwargs)
     except TypeError:
         bpy.ops.export_scene.fbx(**kwargs)
-    print("DONE")
 
 
 main()

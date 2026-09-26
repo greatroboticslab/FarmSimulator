@@ -139,9 +139,10 @@ public static class SkySetup
 		s.seamlessCubemap = true;
 		s.mipmapEnabled = true;
 		imp.SetTextureSettings(s);
-		if (imp.maxTextureSize != 2048 || imp.textureCompression != TextureImporterCompression.CompressedHQ) changed = true;
-		//a 4096 lat-long holds 1024 pixels per 90 degrees; a 2048 face keeps all of it
-		imp.maxTextureSize = 2048;
+		if (imp.maxTextureSize != 1024 || imp.textureCompression != TextureImporterCompression.CompressedHQ) changed = true;
+		//a 4096 lat-long holds 1024 pixels per 90 degrees, so a 1024 face keeps
+		//what the image has; 2048 faces interpolated it and cost 32 MB of build
+		imp.maxTextureSize = 1024;
 		//BC6H on desktop: HDR, 1 byte per pixel
 		imp.textureCompression = TextureImporterCompression.CompressedHQ;
 		if (changed) imp.SaveAndReimport();

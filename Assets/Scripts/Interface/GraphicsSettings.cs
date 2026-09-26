@@ -73,6 +73,8 @@ public class GraphicsSettings : MonoBehaviour
 	static bool benchmarkUncapped;
 	//fixed-view screenshots after measuring, see BenchmarkTour
 	static bool benchmarkTour;
+	//name (or part of it) of the crop to plant; the first in the list otherwise
+	static string benchmarkCrop;
 
 	float cameraScanAt;
 	readonly List<float> frameTimes = new List<float>(1024);
@@ -138,6 +140,7 @@ public class GraphicsSettings : MonoBehaviour
 			else if (a == "-benchmark-out" && i + 1 < args.Length) benchmarkOut = args[i + 1];
 			else if (a == "-benchmark-uncapped") benchmarkUncapped = true;
 			else if (a == "-benchmark-tour") benchmarkTour = true;
+			else if (a == "-benchmark-crop" && i + 1 < args.Length) benchmarkCrop = args[i + 1];
 			else if (a == "-overlay") showOverlay = true;
 		}
 	}
@@ -695,6 +698,10 @@ public class GraphicsSettings : MonoBehaviour
 		if (PathMaker.Instance.rover != null && PathMaker.Instance.manip != null && PathMaker.Instance.manip.plotHelperPrefab != null)
 		{
 			GameObject crop = PathMaker.Instance.selectedCrop;
+			//-benchmark-crop <name>: plant a particular crop instead of the first
+			if (!string.IsNullOrEmpty(benchmarkCrop) && PathMaker.Instance.cropList != null)
+				foreach (GameObject c in PathMaker.Instance.cropList)
+					if (c != null && c.name.IndexOf(benchmarkCrop, StringComparison.OrdinalIgnoreCase) >= 0) { crop = c; break; }
 			if (crop == null && PathMaker.Instance.cropList != null && PathMaker.Instance.cropList.Count > 0) crop = PathMaker.Instance.cropList[0];
 			if (crop != null)
 			{

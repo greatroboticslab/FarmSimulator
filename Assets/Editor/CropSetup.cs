@@ -40,6 +40,23 @@ public static class CropSetup
 				{ "Assets/Materials/Soybean_dead.mat", "SoybeanDead" },
 			},
 		},
+		//the four ears are FruitBody objects the grabber harvests; only their
+		//meshes change, their rigidbodies and colliders stay
+		new Crop
+		{
+			prefab = "Assets/Plants/corn_stalk.prefab",
+			model = "Assets/Models/Crops/Corn.fbx",
+			meshes = new Dictionary<string, string>
+			{
+				{ "Assets/Models/corn_stalk.obj", "CornStalk" },
+				{ "Assets/Models/corn_cob.obj", "CornEar" },
+			},
+			materials = new Dictionary<string, string>
+			{
+				{ "Assets/Materials/CornStalk.mat", "Corn" },
+				{ "Assets/Materials/CornCob.mat", "Corn" },
+			},
+		},
 	};
 
 	[MenuItem("Tools/Build Crop Plants")]

@@ -450,7 +450,8 @@ def main():
     blades = load_blades("Foliage001_1K-PNG", False) + load_blades("Foliage008_1K-PNG", True)
     print("grass blades: %d" % len(blades))
     ground = os.path.join(os.path.dirname(OUT), "Ground")
-    straw = (1.0, 0.86, 0.55)
+    # pale straw: a more saturated one read as orange bushes at a distance
+    straw = (0.95, 0.88, 0.68)
     save_tuft(os.path.join(ground, "GrassBlades.png"), grass_tuft(blades, rng, 75, 0.12, straw))
     save_tuft(os.path.join(ground, "DryBlades.png"), grass_tuft(blades, rng, 60, 0.8, straw))
 

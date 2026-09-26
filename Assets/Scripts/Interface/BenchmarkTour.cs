@@ -74,6 +74,23 @@ public static class BenchmarkTour
 			yield return Shot(cam, dir, prefix + "_rock", from, k + Vector3.up * 0.3f, 55f);
 		}
 
+		//every time-of-day / weather preset from the same two views
+		SkyPresets skies = SkyPresets.Instance;
+		if (skies != null && skies.presets.Length > 1)
+		{
+			int was = SkyPresets.Current;
+			for (int i = 0; i < skies.presets.Length; i++)
+			{
+				skies.Apply(i);
+				//the ambient probe and reflections update over the next frames
+				yield return new WaitForSecondsRealtime(0.6f);
+				string tag = skies.presets[i].name.Replace(" ", "");
+				yield return Shot(cam, dir, prefix + "_preset_" + tag + "_field", r - f * 10f + Vector3.up * 2.2f, r + f * 25f, 60f);
+				yield return Shot(cam, dir, prefix + "_preset_" + tag + "_backlit", r + sunFlat * 9f + Vector3.up * 2.5f, r - sunFlat * 30f, 60f);
+			}
+			skies.Apply(was);
+		}
+
 		cam.transform.SetPositionAndRotation(savedPos, savedRot);
 		cam.fieldOfView = savedFov;
 		if (driver != null) driver.enabled = driverWas;

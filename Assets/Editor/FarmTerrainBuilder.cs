@@ -52,10 +52,13 @@ public static class FarmTerrainBuilder
 		//are all matte in reality, so using them as absolute values makes dry
 		//grass shinier than wet soil. These are physically sensible instead, and
 		//they are what stops every ground type from sharing one default gloss.
-		TerrainLayer grass = MakeLayer("Grass", "GrassAlbedo", "GrassNormal", 12f, 0.25f);
-		TerrainLayer dry = MakeLayer("DryGrass", "DryGrassAlbedo", "DryGrassNormal", 14f, 0.12f);
-		TerrainLayer dirt = MakeLayer("Dirt", "DirtAlbedo", "DirtNormal", 9f, 0.10f);
-		TerrainLayer soil = MakeLayer("Soil", "SoilAlbedo", "SoilNormal", 7f, 0.18f);
+		//Kept low: with a low sun (the late-afternoon sky preset) anything above
+		//about 0.15 turns into a glassy glare at grazing angles; grass at 0.25
+		//looked wet.
+		TerrainLayer grass = MakeLayer("Grass", "GrassAlbedo", "GrassNormal", 12f, 0.12f);
+		TerrainLayer dry = MakeLayer("DryGrass", "DryGrassAlbedo", "DryGrassNormal", 14f, 0.08f);
+		TerrainLayer dirt = MakeLayer("Dirt", "DirtAlbedo", "DirtNormal", 9f, 0.08f);
+		TerrainLayer soil = MakeLayer("Soil", "SoilAlbedo", "SoilNormal", 7f, 0.14f);
 		return new TerrainLayer[] { grass, dry, dirt, soil };
 	}
 

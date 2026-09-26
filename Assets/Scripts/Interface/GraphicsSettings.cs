@@ -59,6 +59,7 @@ public class GraphicsSettings : MonoBehaviour
 	static GraphicsSettings instance;
 	static Button hudButton;
 	static Button resButton;
+	static Button skyButton;
 	static bool showOverlay;
 
 	//-renderheight from the command line, int.MinValue when absent
@@ -252,6 +253,16 @@ public class GraphicsSettings : MonoBehaviour
 			resButton.GetComponent<RectTransform>().anchoredPosition = src.anchoredPosition + new Vector2(0f, -3f * slot);
 		}
 
+		//time of day and weather, see SkyPresets
+		if (template.transform.parent.Find("SkyButton") == null && SkyPresets.Instance != null && SkyPresets.Instance.presets.Length > 1)
+		{
+			skyButton = UnityEngine.Object.Instantiate(template, template.transform.parent);
+			skyButton.name = "SkyButton";
+			skyButton.onClick.RemoveAllListeners();
+			skyButton.onClick.AddListener(() => { SkyPresets.Cycle(); RefreshLabel(); });
+			skyButton.GetComponent<RectTransform>().anchoredPosition = src.anchoredPosition + new Vector2(0f, -4f * slot);
+		}
+
 		RefreshLabel();
 	}
 
@@ -291,6 +302,7 @@ public class GraphicsSettings : MonoBehaviour
 		//short enough to fit the HUD button on one line
 		bool automatic = heightOverride == int.MinValue && PlayerPrefs.GetInt(HeightPrefKey, 0) == 0;
 		SetLabel(resButton, (automatic ? "Auto: " : "Render: ") + w + "x" + h);
+		SetLabel(skyButton, "Sky: " + SkyPresets.CurrentName);
 	}
 
 	static void SetLabel(Button b, string text)

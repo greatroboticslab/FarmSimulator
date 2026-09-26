@@ -335,7 +335,7 @@ public class GraphicsSettings : MonoBehaviour
 
 		foreach (Camera cam in UnityEngine.Object.FindObjectsOfType<Camera>(true))
 		{
-			if (cam.targetTexture != null) continue;   //robot picture-in-picture, see RobotCameraThrottle
+			if (IsPictureInPicture(cam) || RenderScaler.IsPresenter(cam)) continue;
 			cam.allowHDR = Pick(HdrOn, level);
 			//MSAA only where the quality asset asks for it (Very High and Ultra)
 			cam.allowMSAA = level >= 4;
@@ -362,7 +362,7 @@ public class GraphicsSettings : MonoBehaviour
 		foreach (PostProcessLayer layer in UnityEngine.Object.FindObjectsOfType<PostProcessLayer>(true))
 		{
 			Camera cam = layer.GetComponent<Camera>();
-			if (cam != null && cam.targetTexture != null) continue;
+			if (cam != null && IsPictureInPicture(cam)) continue;
 			layer.enabled = fx;
 			//the NaN guard is a debugging aid that costs a full-screen pass
 			layer.stopNaNPropagation = false;
@@ -447,8 +447,20 @@ public class GraphicsSettings : MonoBehaviour
 
 	static void TargetResolution(int level, out int w, out int h)
 	{
-		int nativeW = Display.main.systemWidth;
-		int nativeH = Display.main.systemHeight;
+		//in the editor "native" is the Game view, not the desktop: scaling has to be
+		//measured against the surface actually being filled, and Screen reports the
+		//Game view there. In a player the two are the same thing.
+		int nativeW, nativeH;
+		if (Application.isEditor)
+		{
+			nativeW = Screen.width;
+			nativeH = Screen.height;
+		}
+		else
+		{
+			nativeW = Display.main.systemWidth;
+			nativeH = Display.main.systemHeight;
+		}
 		if (nativeW <= 0 || nativeH <= 0) { nativeW = Screen.width; nativeH = Screen.height; }
 
 		int targetH = heightOverride != int.MinValue ? heightOverride : PlayerPrefs.GetInt(HeightPrefKey, 0);
@@ -468,17 +480,62 @@ public class GraphicsSettings : MonoBehaviour
 	//single most effective control in the file.
 	static void ApplyResolution(int level)
 	{
-		if (Application.isEditor) return;
 		int w, h;
 		TargetResolution(level, out w, out h);
+
+		//Screen.SetResolution is a no-op in the editor, and the machine this work
+		//targets runs the project in the editor, so scale through a render texture
+		//there instead. See RenderScaler.
+		if (Application.isEditor)
+		{
+			editorScaleWanted = w < Screen.width || h < Screen.height;
+			if (!editorScaleWanted) RenderScaler.Disable();
+			else RenderScaler.Apply(Camera.main, w, h);
+			return;
+		}
+
 		if (Screen.width == w && Screen.height == h) return;
 		Screen.SetResolution(w, h, Screen.fullScreenMode);
 		Debug.Log("[GraphicsSettings] render resolution " + w + "x" + h + " (display " + Display.main.systemWidth + "x" + Display.main.systemHeight + ")");
 	}
 
+	//RenderScaler calls this when the editor Game view is resized, so the scene
+	//texture keeps matching the surface it is stretched over.
+	public static void RefreshRenderScale()
+	{
+		if (Application.isEditor) ApplyResolution(QualitySettings.GetQualityLevel());
+	}
+
+	//the tier wants the editor view scaled; retried from Update in case there was
+	//no main camera yet when the tier was applied
+	static bool editorScaleWanted;
+
+	//what the scene is drawn at, and the surface it is shown on: the scaler's
+	//texture and the Game view in the editor, the window and desktop in a player
+	static string RenderSizeText()
+	{
+		return RenderScaler.RenderWidth + "x" + RenderScaler.RenderHeight;
+	}
+
+	static string DisplaySizeText()
+	{
+		return Application.isEditor
+			? Screen.width + "x" + Screen.height
+			: Display.main.systemWidth + "x" + Display.main.systemHeight;
+	}
+
 	//Decorative props (trees, rocks, people) scale with the tier; see ObjectPlacer
 	public static float PropFraction() { return Pick(PropFrac, QualitySettings.GetQualityLevel()); }
 	public static int AnimatedPropBudget() { return Pick(AnimatedProps, QualitySettings.GetQualityLevel()); }
+
+	//Robot picture-in-picture cameras draw into a texture. So does the main camera
+	//while RenderScaler scales it, and that one is the player's view: adopting it
+	//would disable it (Camera.main goes null, clicks stop working, the listener
+	//goes quiet) and redraw it at the picture-in-picture rate of 5 to 12 fps.
+	static bool IsPictureInPicture(Camera cam)
+	{
+		return cam != null && cam.targetTexture != null && !RenderScaler.Owns(cam);
+	}
 
 	//Any enabled camera drawing into a render texture is a robot camera; it
 	//must not render every frame on its own
@@ -486,7 +543,7 @@ public class GraphicsSettings : MonoBehaviour
 	{
 		foreach (Camera cam in Camera.allCameras)
 		{
-			if (cam == null || cam.targetTexture == null) continue;
+			if (!IsPictureInPicture(cam)) continue;
 			if (cam.GetComponent<RobotCameraThrottle>() == null) cam.gameObject.AddComponent<RobotCameraThrottle>();
 		}
 	}
@@ -501,6 +558,7 @@ public class GraphicsSettings : MonoBehaviour
 		{
 			cameraScanAt = Time.unscaledTime + 0.5f;
 			AdoptRobotCameras();
+			if (editorScaleWanted && !RenderScaler.Active && Camera.main != null) RefreshRenderScale();
 		}
 
 		//plants only need per-frame work while a UV lamp is over them
@@ -530,9 +588,9 @@ public class GraphicsSettings : MonoBehaviour
 	{
 		if (!showOverlay) return;
 		string text = string.Format(CultureInfo.InvariantCulture,
-			"{0:0} fps   cpu {1:0.0} ms   gpu {2:0.0} ms\n{3}   {4}x{5}\n{6}",
+			"{0:0} fps   cpu {1:0.0} ms   gpu {2:0.0} ms\n{3}   render {4} on {5}\n{6}",
 			overlayFps, overlayCpu, overlayGpu,
-			QualitySettings.names[QualitySettings.GetQualityLevel()], Screen.width, Screen.height,
+			QualitySettings.names[QualitySettings.GetQualityLevel()], RenderSizeText(), DisplaySizeText(),
 			SystemInfo.graphicsDeviceName);
 		GUI.color = Color.black;
 		GUI.Label(new Rect(11, 11, 600, 70), text);
@@ -681,8 +739,8 @@ public class GraphicsSettings : MonoBehaviour
 		sb.AppendLine(string.Join(",", new string[] {
 			DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
 			QualitySettings.names[QualitySettings.GetQualityLevel()],
-			Screen.width + "x" + Screen.height,
-			Display.main.systemWidth + "x" + Display.main.systemHeight,
+			RenderSizeText(),
+			DisplaySizeText(),
 			avgFps.ToString("0.0", CultureInfo.InvariantCulture),
 			lowFps.ToString("0.0", CultureInfo.InvariantCulture),
 			cpuMs.ToString("0.00", CultureInfo.InvariantCulture),
@@ -701,7 +759,7 @@ public class GraphicsSettings : MonoBehaviour
 			File.AppendAllText(path, sb.ToString());
 		}
 		catch (Exception e) { Debug.LogError("[Benchmark] could not write " + path + ": " + e.Message); }
-		Debug.Log("[Benchmark] " + status + " quality=" + QualitySettings.names[QualitySettings.GetQualityLevel()] + " plants=" + plants + " managed=" + managedMb.ToString("0") + "MB render=" + Screen.width + "x" + Screen.height
+		Debug.Log("[Benchmark] " + status + " quality=" + QualitySettings.names[QualitySettings.GetQualityLevel()] + " plants=" + plants + " managed=" + managedMb.ToString("0") + "MB render=" + RenderSizeText()
 			+ " avg=" + avgFps.ToString("0.0", CultureInfo.InvariantCulture) + "fps low1%=" + lowFps.ToString("0.0", CultureInfo.InvariantCulture)
 			+ "fps cpu=" + cpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms gpu=" + gpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms -> " + path);
 	}

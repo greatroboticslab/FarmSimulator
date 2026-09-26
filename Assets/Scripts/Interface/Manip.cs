@@ -290,7 +290,7 @@ public class Manip : MonoBehaviour
 			
 			RaycastHit hit;
 			if(Camera.main == null) return;
-			Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
+			Ray ray = RenderScaler.ScreenPointToRay (Camera.main, Input.mousePosition);
 				if (Physics.Raycast (ray, out hit, 4000f)) {
 					
 					if(placeGhost) {
@@ -339,7 +339,7 @@ public class Manip : MonoBehaviour
 			
 			RaycastHit hit;
 			if(Camera.main == null) return;
-			Ray ray = Camera.main.ScreenPointToRay (Input.mousePosition);
+			Ray ray = RenderScaler.ScreenPointToRay (Camera.main, Input.mousePosition);
 			if (Physics.Raycast (ray, out hit, 4000f)) {
 				UpdatePlaceMarker(hit.point);
 			}

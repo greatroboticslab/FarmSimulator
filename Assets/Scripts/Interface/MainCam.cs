@@ -110,7 +110,7 @@ public class MainCam : MonoBehaviour
 		//Select robot mode
 		if(mode == 3) {
 			if(Camera.main == null || PathMaker.Instance == null) return;
-			Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+			Ray ray = RenderScaler.ScreenPointToRay(Camera.main, Input.mousePosition);
             RaycastHit hit;
             if (Physics.Raycast(ray, out hit, 100))
             {

@@ -298,6 +298,72 @@ def cedar_spray(rng):
     return np.clip(rgb, 0, 1), np.clip(a, 0, 1), n
 
 
+def load_blades(asset, base_at_left):
+    """Single grass blades from an ambientCG foliage set, turned tip-up."""
+    blades = load_leaves(asset, min_area=1500)
+    out = []
+    for rgb, a, n in blades:
+        h, w = a.shape
+        # keep long thin shapes only (a blade, not a stray fragment)
+        if max(h, w) < 4 * min(h, w):
+            continue
+        if base_at_left:
+            rgb, a, n = transform_sprite((rgb, a, n), 90.0, 1.0, False)
+        # the scanned blades are broad; pasted at tuft scale they read as
+        # daylily leaves, so they are narrowed to half width
+        h, w = a.shape
+        nw = max(3, w // 2)
+        rgb = np.stack([np.asarray(Image.fromarray(rgb[:, :, c], mode="F").resize((nw, h), Image.LANCZOS)) for c in range(3)], axis=2)
+        a = np.asarray(Image.fromarray(a, mode="F").resize((nw, h), Image.LANCZOS))
+        n = np.stack([np.asarray(Image.fromarray(n[:, :, c], mode="F").resize((nw, h), Image.BILINEAR)) for c in range(3)], axis=2)
+        out.append((np.clip(rgb, 0, 1), np.clip(a, 0, 1), n))
+    return out
+
+
+def grass_tuft(blades, rng, count, dry_fraction, straw):
+    """A 512 px tuft card: blades fanning up from the bottom centre, taller in
+    the middle, the outer ones leaning further; a few dead blades; darker at
+    the root where the tuft shades itself."""
+    cell = new_cell()
+    base_x = CELL / 2
+    order = []
+    for k in range(count):
+        spread = rng.gauss(0, 0.45)
+        lean = max(-42.0, min(42.0, spread * 38 + rng.uniform(-6, 6)))
+        height = CELL * rng.uniform(0.5, 0.95) * (1.0 - 0.35 * min(1.0, abs(spread)))
+        order.append((rng.random(), lean, height, base_x + spread * CELL * 0.12 + rng.uniform(-10, 10),
+                      rng.random() < dry_fraction))
+    order.sort(key=lambda o: o[0])
+    for depth, lean, height, bx, dry in order:
+        spr = blades[rng.randrange(len(blades))]
+        scale = height / spr[1].shape[0]
+        tr = transform_sprite(spr, -lean, scale, rng.random() < 0.5)
+        rgb = tr[0]
+        if dry:
+            lum = rgb @ np.array([0.3, 0.59, 0.11], np.float32)
+            rgb = np.clip(lum[:, :, None] * np.array(straw, np.float32) * 1.5, 0, 1)
+        # bottom of the rotated blade sits at the base point
+        h, w = tr[1].shape
+        a = math.radians(lean)
+        cx = bx + math.sin(a) * height * 0.5
+        cy = CELL - 2 - math.cos(a) * height * 0.5
+        tint = 0.8 + 0.3 * depth
+        paste(cell, (rgb, tr[1], tr[2]), cx, cy, tint)
+    crgb, ca, cn = cell
+    rows = np.linspace(0, 1, CELL, dtype=np.float32)[:, None, None]
+    crgb *= 0.55 + 0.45 * (1.0 - rows) ** 0.6 + 0.0 * rows
+    return cell
+
+
+def save_tuft(path, cell):
+    crgb, ca, cn = cell
+    rgb = dilate_colour(crgb, ca)
+    rgba = np.dstack([rgb, ca])
+    Image.fromarray((np.clip(rgba, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(path, optimize=True)
+    print("%-14s coverage %.2f  mean colour %s" % (os.path.basename(path), float(ca.mean()),
+                                                    np.round(rgb[ca > 0.5].mean(0), 3)))
+
+
 # ----------------------------------------------------------------------------
 # output
 
@@ -378,6 +444,15 @@ def main():
     save_bark("OakBark", "Bark012_1K-JPG", (0.74, 0.70, 0.66))
     # Eastern red cedar bark is reddish and stringy; pull Bark015 toward it
     save_bark("CedarBark", "Bark015_1K-JPG", (0.80, 0.62, 0.52))
+
+    # terrain grass tufts: the same file names the terrain builder's tuft
+    # prefabs already use, so no asset reference changes
+    blades = load_blades("Foliage001_1K-PNG", False) + load_blades("Foliage008_1K-PNG", True)
+    print("grass blades: %d" % len(blades))
+    ground = os.path.join(os.path.dirname(OUT), "Ground")
+    straw = (1.0, 0.86, 0.55)
+    save_tuft(os.path.join(ground, "GrassBlades.png"), grass_tuft(blades, rng, 75, 0.12, straw))
+    save_tuft(os.path.join(ground, "DryBlades.png"), grass_tuft(blades, rng, 60, 0.8, straw))
 
 
 if __name__ == "__main__":

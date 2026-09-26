@@ -102,9 +102,21 @@ public static class VegetationSetup
 		}
 
 		WireLegacyTree(prefabs, weights);
+		ConfigureTufts();
 		AssetDatabase.SaveAssets();
 		Debug.Log("VegetationSetup: " + trees + " tree prefabs, LOD0 average " + (trees > 0 ? triangles0 / trees : 0)
 			+ " triangles; " + LegacyTree + " now spawns them");
+	}
+
+	//The terrain's grass tufts (FarmTerrainBuilder) use these two textures, now
+	//composited from CC0 blade scans by build_vegetation_textures.py. Same
+	//alpha-test treatment as the leaves: without coverage-preserving mips the
+	//tufts thin out to nothing a few metres away.
+	[MenuItem("Tools/Configure Grass Tuft Textures")]
+	public static void ConfigureTufts()
+	{
+		ConfigureLeafTexture("Assets/Textures/Ground/GrassBlades.png", 0.45f);
+		ConfigureLeafTexture("Assets/Textures/Ground/DryBlades.png", 0.45f);
 	}
 
 	static GameObject MakePrefab(GameObject model, string treeName, Species sp, out int lod0Triangles)

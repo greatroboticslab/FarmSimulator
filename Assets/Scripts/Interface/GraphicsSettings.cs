@@ -420,20 +420,37 @@ public class GraphicsSettings : MonoBehaviour
 	}
 
 	static Material skyboxInstance;
+	static Material environmentFrom;
 
-	//The procedural sky computes its sun disk per pixel behind everything else.
-	//Its cheap variant is close enough on the tiers that need the frames.
+	//Two kinds of sky. The farm's is an HDRI cubemap (Tools > Install HDRI Sky):
+	//one texture read per pixel, the same on every tier, nothing to switch. The
+	//procedural sky computes its sun disk per pixel behind everything else, and
+	//its cheap variant is close enough on the tiers that need the frames.
+	//Either way ambient light and reflections come from the sky, and the scene has
+	//no baked lighting data to hold them, so they are derived from the sky here
+	//whenever it changes.
 	static void ApplySkybox(int level)
 	{
 		Material sky = RenderSettings.skybox;
 		if (sky == null) return;
+
+		if (sky.HasProperty("_SunDisk")) ApplyProceduralSunDisk(sky, level);
+
+		if (environmentFrom != RenderSettings.skybox)
+		{
+			environmentFrom = RenderSettings.skybox;
+			DynamicGI.UpdateEnvironment();
+		}
+	}
+
+	static void ApplyProceduralSunDisk(Material sky, int level)
+	{
 		if (skyboxInstance == null || sky != skyboxInstance)
 		{
 			//work on a copy: editing the shared material would change the asset on disk
 			skyboxInstance = new Material(sky);
 			RenderSettings.skybox = skyboxInstance;
 		}
-		if (!skyboxInstance.HasProperty("_SunDisk")) return;
 
 		bool simple = level < 3;
 		skyboxInstance.SetFloat("_SunDisk", simple ? 1f : 2f);

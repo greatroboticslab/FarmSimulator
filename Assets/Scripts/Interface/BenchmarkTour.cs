@@ -40,7 +40,19 @@ public static class BenchmarkTour
 		yield return Shot(cam, dir, prefix + "_field", r - f * 10f + Vector3.up * 2.2f, r + f * 25f, 60f);
 		yield return Shot(cam, dir, prefix + "_sky", r + Vector3.up * 1.8f, r + Vector3.up * 1.8f + sunFlat * 100f + Vector3.up * 22f, 70f);
 		yield return Shot(cam, dir, prefix + "_overview", r - f * 70f + Vector3.up * 45f, r + f * 20f, 60f);
-		yield return Shot(cam, dir, prefix + "_robot", r + right * 2.6f - f * 2.4f + Vector3.up * 1.6f, r + Vector3.up * 0.7f, 50f);
+		//frame the robot by what it renders: its transform can sit well away
+		//from the body
+		Bounds robot = new Bounds(r, Vector3.one);
+		bool any = false;
+		foreach (Renderer rr in PathMaker.Instance.rover.GetComponentsInChildren<Renderer>())
+		{
+			if (rr is ParticleSystemRenderer || rr is LineRenderer || rr is TrailRenderer) continue;
+			if (!any) { robot = rr.bounds; any = true; }
+			else robot.Encapsulate(rr.bounds);
+		}
+		float reach = Mathf.Clamp(robot.extents.magnitude, 0.5f, 4f);
+		Vector3 side = (right * 0.8f - f * 0.6f).normalized;
+		yield return Shot(cam, dir, prefix + "_robot", robot.center + side * reach * 2.6f + Vector3.up * reach * 1.1f, robot.center, 40f);
 		yield return Shot(cam, dir, prefix + "_backlit", r + sunFlat * 9f + Vector3.up * 2.5f, r - sunFlat * 30f, 60f);
 		//the same view again a moment later: any difference in the foliage is wind
 		yield return new WaitForSecondsRealtime(0.7f);

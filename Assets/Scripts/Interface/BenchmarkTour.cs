@@ -46,9 +46,44 @@ public static class BenchmarkTour
 		yield return new WaitForSecondsRealtime(0.7f);
 		yield return Shot(cam, dir, prefix + "_backlit2", r + sunFlat * 9f + Vector3.up * 2.5f, r - sunFlat * 30f, 60f);
 
+		//close-ups of the nearest scattered tree and rock, lit from the camera's side
+		Transform tree = NearestProp(r, "Oak", "Elm", "Cedar");
+		if (tree != null)
+		{
+			Vector3 t = tree.position;
+			Vector3 from = t + sunFlat * 16f + Vector3.up * 3f;
+			yield return Shot(cam, dir, prefix + "_tree", from, t + Vector3.up * 5f, 60f);
+		}
+		Transform rock = NearestProp(r, "Rock", "Stone", "Boulder");
+		if (rock != null)
+		{
+			Vector3 k = rock.position;
+			Vector3 from = k + sunFlat * 3.2f + Vector3.up * 1.6f;
+			yield return Shot(cam, dir, prefix + "_rock", from, k + Vector3.up * 0.3f, 55f);
+		}
+
 		cam.transform.SetPositionAndRotation(savedPos, savedRot);
 		cam.fieldOfView = savedFov;
 		if (driver != null) driver.enabled = driverWas;
+	}
+
+	//scattered props are children of the map's ObjectPlacer, named after their
+	//prefab ("Oak_B(Clone)")
+	static Transform NearestProp(Vector3 near, params string[] prefixes)
+	{
+		ObjectPlacer placer = Object.FindObjectOfType<ObjectPlacer>();
+		if (placer == null) return null;
+		Transform best = null;
+		float bestD = float.MaxValue;
+		foreach (Transform t in placer.transform)
+		{
+			bool match = false;
+			foreach (string p in prefixes) if (t.name.StartsWith(p)) { match = true; break; }
+			if (!match) continue;
+			float d = (t.position - near).sqrMagnitude;
+			if (d < bestD) { bestD = d; best = t; }
+		}
+		return best;
 	}
 
 	static IEnumerator Shot(Camera cam, string dir, string name, Vector3 from, Vector3 lookAt, float fov)

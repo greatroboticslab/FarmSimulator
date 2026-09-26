@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.Rendering.PostProcessing;
+using Unity.Profiling;
 using TMPro;
 
 //Player-facing graphics control plus the runtime half of the low-end
@@ -760,9 +761,14 @@ public class GraphicsSettings : MonoBehaviour
 		if (RenderScaler.Active && Camera.main != null) Debug.Log("[Benchmark] " + ClickMappingReport(Camera.main));
 		Debug.Log("[Benchmark] " + LightingReport());
 
-		//measure
+		//measure; the render counters are what the Stats window shows, summed
+		//over every camera in the frame (main view, robot views, minimap)
 		frameTimes.Clear();
 		double cpuSum = 0, gpuSum = 0; int timed = 0;
+		ProfilerRecorder drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
+		ProfilerRecorder setPassCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count");
+		ProfilerRecorder triangles = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
+		double drawSum = 0, setPassSum = 0, triSum = 0; int counted = 0;
 		float until = Time.unscaledTime + benchmarkSeconds;
 		while (Time.unscaledTime < until)
 		{
@@ -773,7 +779,15 @@ public class GraphicsSettings : MonoBehaviour
 			{
 				cpuSum += timing[0].cpuFrameTime; gpuSum += timing[0].gpuFrameTime; timed++;
 			}
+			if (drawCalls.Valid && drawCalls.LastValue > 0)
+			{
+				drawSum += drawCalls.LastValue; setPassSum += setPassCalls.LastValue; triSum += triangles.LastValue; counted++;
+			}
 		}
+		drawCalls.Dispose(); setPassCalls.Dispose(); triangles.Dispose();
+		benchmarkCounters = counted > 0
+			? new float[] { (float)(drawSum / counted), (float)(setPassSum / counted), (float)(triSum / counted) }
+			: null;
 
 		float total = 0f; foreach (float f in frameTimes) total += f;
 		float avgFps = frameTimes.Count / Mathf.Max(total, 0.0001f);
@@ -792,15 +806,30 @@ public class GraphicsSettings : MonoBehaviour
 		Quit();
 	}
 
+	//average draw calls, SetPass calls and triangles per frame while measuring;
+	//null where the player does not expose the counters
+	static float[] benchmarkCounters;
+
+	const string BenchmarkHeader = "time,quality,render,display,avg_fps,one_percent_low_fps,cpu_ms,gpu_ms,frames,plants,managed_mb,crop,status,gpu_name,vram_mb,cpu_name,draw_calls,setpass_calls,triangles";
+
 	void WriteBenchmarkRow(string status, float avgFps, float lowFps, float cpuMs, float gpuMs, int frames)
 	{
 		string path = string.IsNullOrEmpty(benchmarkOut) ? Path.Combine(Application.persistentDataPath, "benchmark.csv") : benchmarkOut;
-		bool fresh = !File.Exists(path);
+		//a file started by an older build has fewer columns: give the new rows
+		//their own header line rather than leave three columns unnamed
+		bool fresh = true;
+		try { if (File.Exists(path)) fresh = File.ReadAllText(path).IndexOf(BenchmarkHeader, StringComparison.Ordinal) < 0; }
+		catch (Exception) { }
 		int plants = Plant.All.Count;
 		float managedMb = GC.GetTotalMemory(false) / (1024f * 1024f);
 		string crop = PathMaker.Instance != null && PathMaker.Instance.selectedCrop != null ? PathMaker.Instance.selectedCrop.name : "";
+		float[] counters = status == "ok" ? benchmarkCounters : null;
+		string countersCsv = counters == null ? ",," : string.Join(",", new string[] {
+			counters[0].ToString("0", CultureInfo.InvariantCulture),
+			counters[1].ToString("0", CultureInfo.InvariantCulture),
+			counters[2].ToString("0", CultureInfo.InvariantCulture) });
 		StringBuilder sb = new StringBuilder();
-		if (fresh) sb.AppendLine("time,quality,render,display,avg_fps,one_percent_low_fps,cpu_ms,gpu_ms,frames,plants,managed_mb,crop,status,gpu_name,vram_mb,cpu_name");
+		if (fresh) sb.AppendLine(BenchmarkHeader);
 		sb.AppendLine(string.Join(",", new string[] {
 			DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
 			QualitySettings.names[QualitySettings.GetQualityLevel()],
@@ -817,7 +846,8 @@ public class GraphicsSettings : MonoBehaviour
 			status,
 			Quote(SystemInfo.graphicsDeviceName),
 			SystemInfo.graphicsMemorySize.ToString(CultureInfo.InvariantCulture),
-			Quote(SystemInfo.processorType) }));
+			Quote(SystemInfo.processorType),
+			countersCsv }));
 		try
 		{
 			Directory.CreateDirectory(Path.GetDirectoryName(path));
@@ -826,7 +856,11 @@ public class GraphicsSettings : MonoBehaviour
 		catch (Exception e) { Debug.LogError("[Benchmark] could not write " + path + ": " + e.Message); }
 		Debug.Log("[Benchmark] " + status + " quality=" + QualitySettings.names[QualitySettings.GetQualityLevel()] + " plants=" + plants + " managed=" + managedMb.ToString("0") + "MB render=" + RenderSizeText()
 			+ " avg=" + avgFps.ToString("0.0", CultureInfo.InvariantCulture) + "fps low1%=" + lowFps.ToString("0.0", CultureInfo.InvariantCulture)
-			+ "fps cpu=" + cpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms gpu=" + gpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms -> " + path);
+			+ "fps cpu=" + cpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms gpu=" + gpuMs.ToString("0.00", CultureInfo.InvariantCulture) + "ms"
+			+ (counters == null ? " counters=n/a" : " draws=" + counters[0].ToString("0", CultureInfo.InvariantCulture)
+				+ " setpass=" + counters[1].ToString("0", CultureInfo.InvariantCulture)
+				+ " tris=" + (counters[2] / 1e6f).ToString("0.00", CultureInfo.InvariantCulture) + "M")
+			+ " clouds=" + (SkyPresets.CloudShadowsOn ? "on" : "off") + " -> " + path);
 	}
 
 	static string Quote(string s) { return "\"" + (s ?? "").Replace("\"", "'") + "\""; }

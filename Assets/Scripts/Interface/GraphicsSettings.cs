@@ -70,6 +70,8 @@ public class GraphicsSettings : MonoBehaviour
 	//lift the 60 fps cap of the low tiers while measuring, so frame rate shows
 	//the frame's real cost (used by the editor comparison, EditorBenchmark.cs)
 	static bool benchmarkUncapped;
+	//fixed-view screenshots after measuring, see BenchmarkTour
+	static bool benchmarkTour;
 
 	float cameraScanAt;
 	readonly List<float> frameTimes = new List<float>(1024);
@@ -134,6 +136,7 @@ public class GraphicsSettings : MonoBehaviour
 			else if (a == "-benchmark-seconds" && i + 1 < args.Length) float.TryParse(args[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out benchmarkSeconds);
 			else if (a == "-benchmark-out" && i + 1 < args.Length) benchmarkOut = args[i + 1];
 			else if (a == "-benchmark-uncapped") benchmarkUncapped = true;
+			else if (a == "-benchmark-tour") benchmarkTour = true;
 			else if (a == "-overlay") showOverlay = true;
 		}
 	}
@@ -728,6 +731,7 @@ public class GraphicsSettings : MonoBehaviour
 			Application.targetFrameRate = -1;
 		}
 		if (RenderScaler.Active && Camera.main != null) Debug.Log("[Benchmark] " + ClickMappingReport(Camera.main));
+		Debug.Log("[Benchmark] " + LightingReport());
 
 		//measure
 		frameTimes.Clear();
@@ -753,6 +757,11 @@ public class GraphicsSettings : MonoBehaviour
 		float gpu = timed > 0 ? (float)(gpuSum / timed) : 0f;
 
 		WriteBenchmarkRow("ok", avgFps, lowFps, cpu, gpu, frameTimes.Count);
+
+		//after measuring, so the fixed views never touch the numbers
+		if (benchmarkTour)
+			yield return StartCoroutine(BenchmarkTour.Run(shotDir,
+				"tour_" + QualitySettings.names[QualitySettings.GetQualityLevel()].Replace(" ", "") + "_" + RenderSizeText()));
 		Quit();
 	}
 
@@ -794,6 +803,22 @@ public class GraphicsSettings : MonoBehaviour
 	}
 
 	static string Quote(string s) { return "\"" + (s ?? "").Replace("\"", "'") + "\""; }
+
+	//The ambient light as the renderer actually has it when measuring. A sky that
+	//never made it into the ambient probe shows up here as black, or as whatever
+	//the probe held before.
+	static string LightingReport()
+	{
+		Vector3[] dirs = { Vector3.up, Vector3.down };
+		Color[] amb = new Color[2];
+		RenderSettings.ambientProbe.Evaluate(dirs, amb);
+		Light sun = RenderSettings.sun;
+		return string.Format(CultureInfo.InvariantCulture,
+			"lighting: sky '{0}', ambient {1}, up {2:0.000} {3:0.000} {4:0.000}, down {5:0.000} {6:0.000} {7:0.000}, sun {8}",
+			RenderSettings.skybox != null ? RenderSettings.skybox.shader.name : "none", RenderSettings.ambientMode,
+			amb[0].r, amb[0].g, amb[0].b, amb[1].r, amb[1].g, amb[1].b,
+			sun != null ? sun.intensity.ToString("0.000", CultureInfo.InvariantCulture) + " pitch " + sun.transform.eulerAngles.x.ToString("0.0", CultureInfo.InvariantCulture) : "none");
+	}
 
 	//With the scene drawn into a smaller texture, a click still has to land on the
 	//world point it would hit unscaled. Compares the converted screen ray against

@@ -28,7 +28,10 @@ Shader "Custom/WaterTrueDepthFade"
 
             sampler2D _NoiseTex1, _NoiseTex2;
             sampler2D _GrabTex;
-            sampler2D _CameraDepthTexture;
+            //declared through the macro: on D3D11 SAMPLE_DEPTH_TEXTURE_PROJ reads
+            //through a separate sampler_CameraDepthTexture, and a plain sampler2D
+            //left it undeclared, so the shader failed to compile there
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             float4 _Speed1, _Speed2;
             float _RefractionStrength;
             float _DepthInfluence;
@@ -93,5 +96,7 @@ Shader "Custom/WaterTrueDepthFade"
         }
     }
 
-    FallBack "Transparent"
+    //there is no shader called "Transparent"; transparent water casts no shadow
+    //and needs no fallback pass
+    FallBack Off
 }

@@ -20,6 +20,17 @@ public class PropVariants : MonoBehaviour
 	public bool alignToGround;
 	[Range(0f, 0.5f)] public float sinkFraction;
 
+	//Where they may stand. Farmers do not leave trees in plowed ground, and trees
+	//on farmland grow in woodlots and along field edges, not evenly everywhere.
+	//never on the terrain's dirt or soil layers
+	public bool avoidFields = true;
+	//0 = even scatter; 1 = only inside the woodlot patches of a noise field
+	[Range(0f, 1f)] public float clustering = 0.8f;
+	//always accepted in a strip along plowed ground: fence-row trees
+	public bool hedgerows = true;
+	//nothing within this many metres of the map's spawn pad
+	public float clearRadius = 35f;
+
 	public GameObject Pick(System.Random rnd)
 	{
 		if (variants == null || variants.Length == 0) return null;

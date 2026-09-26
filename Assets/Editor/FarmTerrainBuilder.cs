@@ -46,14 +46,20 @@ public static class FarmTerrainBuilder
 		{
 			EnsureNormalMapImport("Assets/Textures/Ground/" + n + ".png");
 		}
-		TerrainLayer grass = MakeLayer("Grass", "GrassAlbedo", "GrassNormal", 12f);
-		TerrainLayer dry = MakeLayer("DryGrass", "DryGrassAlbedo", "DryGrassNormal", 14f);
-		TerrainLayer dirt = MakeLayer("Dirt", "DirtAlbedo", "DirtNormal", 9f);
-		TerrainLayer soil = MakeLayer("Soil", "SoilAlbedo", "SoilNormal", 7f);
+		//Smoothness is hand-set rather than read from each scan's roughness map.
+		//The four CC0 sets are not calibrated against each other: the source
+		//roughness maps average 67, 139, 168 and 171 out of 255 for surfaces that
+		//are all matte in reality, so using them as absolute values makes dry
+		//grass shinier than wet soil. These are physically sensible instead, and
+		//they are what stops every ground type from sharing one default gloss.
+		TerrainLayer grass = MakeLayer("Grass", "GrassAlbedo", "GrassNormal", 12f, 0.25f);
+		TerrainLayer dry = MakeLayer("DryGrass", "DryGrassAlbedo", "DryGrassNormal", 14f, 0.12f);
+		TerrainLayer dirt = MakeLayer("Dirt", "DirtAlbedo", "DirtNormal", 9f, 0.10f);
+		TerrainLayer soil = MakeLayer("Soil", "SoilAlbedo", "SoilNormal", 7f, 0.18f);
 		return new TerrainLayer[] { grass, dry, dirt, soil };
 	}
 
-	static TerrainLayer MakeLayer(string name, string albedo, string normal, float tile)
+	static TerrainLayer MakeLayer(string name, string albedo, string normal, float tile, float smoothness)
 	{
 		string path = "Assets/Terrain/" + name + ".terrainlayer";
 		TerrainLayer layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
@@ -65,6 +71,8 @@ public static class FarmTerrainBuilder
 		layer.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/" + albedo + ".png");
 		layer.normalMapTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/" + normal + ".png");
 		layer.normalScale = 0.7f;
+		layer.smoothness = smoothness;
+		layer.metallic = 0f;                         //nothing on a farm floor is metal
 		layer.tileSize = new Vector2(tile, tile);
 		EditorUtility.SetDirty(layer);
 		return layer;

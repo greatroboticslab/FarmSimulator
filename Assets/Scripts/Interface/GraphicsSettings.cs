@@ -67,6 +67,9 @@ public class GraphicsSettings : MonoBehaviour
 	static bool benchmark;
 	static float benchmarkSeconds = 6f;
 	static string benchmarkOut;
+	//lift the 60 fps cap of the low tiers while measuring, so frame rate shows
+	//the frame's real cost (used by the editor comparison, EditorBenchmark.cs)
+	static bool benchmarkUncapped;
 
 	float cameraScanAt;
 	readonly List<float> frameTimes = new List<float>(1024);
@@ -130,6 +133,7 @@ public class GraphicsSettings : MonoBehaviour
 			if (a == "-benchmark") benchmark = true;
 			else if (a == "-benchmark-seconds" && i + 1 < args.Length) float.TryParse(args[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out benchmarkSeconds);
 			else if (a == "-benchmark-out" && i + 1 < args.Length) benchmarkOut = args[i + 1];
+			else if (a == "-benchmark-uncapped") benchmarkUncapped = true;
 			else if (a == "-overlay") showOverlay = true;
 		}
 	}
@@ -696,9 +700,17 @@ public class GraphicsSettings : MonoBehaviour
 
 		//a picture of what was measured, next to the CSV
 		string shotDir = string.IsNullOrEmpty(benchmarkOut) ? Application.persistentDataPath : Path.GetDirectoryName(Path.GetFullPath(benchmarkOut));
-		string shot = Path.Combine(shotDir, "benchmark_" + QualitySettings.names[QualitySettings.GetQualityLevel()].Replace(" ", "") + ".png");
+		//the render size is in the name so the same tier at two scales keeps both pictures
+		string shot = Path.Combine(shotDir, "benchmark_" + QualitySettings.names[QualitySettings.GetQualityLevel()].Replace(" ", "") + "_" + RenderSizeText() + ".png");
 		ScreenCapture.CaptureScreenshot(shot);
 		yield return new WaitForSecondsRealtime(0.5f);
+
+		if (benchmarkUncapped)
+		{
+			QualitySettings.vSyncCount = 0;
+			Application.targetFrameRate = -1;
+		}
+		if (RenderScaler.Active && Camera.main != null) Debug.Log("[Benchmark] " + ClickMappingReport(Camera.main));
 
 		//measure
 		frameTimes.Clear();
@@ -765,6 +777,26 @@ public class GraphicsSettings : MonoBehaviour
 	}
 
 	static string Quote(string s) { return "\"" + (s ?? "").Replace("\"", "'") + "\""; }
+
+	//With the scene drawn into a smaller texture, a click still has to land on the
+	//world point it would hit unscaled. Compares the converted screen ray against
+	//the viewport ray through the same spot.
+	static string ClickMappingReport(Camera cam)
+	{
+		float worst = 0f;
+		for (int i = 0; i <= 4; i++)
+		{
+			for (int j = 0; j <= 4; j++)
+			{
+				Vector3 p = new Vector3(Screen.width * i / 4f, Screen.height * j / 4f, 0f);
+				Ray scaled = RenderScaler.ScreenPointToRay(cam, p);
+				Ray expected = cam.ViewportPointToRay(new Vector3(p.x / Screen.width, p.y / Screen.height, 0f));
+				worst = Mathf.Max(worst, Vector3.Angle(scaled.direction, expected.direction));
+			}
+		}
+		return "scaled click mapping: worst ray error " + worst.ToString("0.0000", CultureInfo.InvariantCulture)
+			+ " deg over 25 points, render " + RenderSizeText() + " on " + DisplaySizeText();
+	}
 
 	static void Quit()
 	{

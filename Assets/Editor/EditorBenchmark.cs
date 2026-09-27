@@ -34,6 +34,7 @@ public static class EditorBenchmark
 
 	//a run that has not come back to edit mode by then is stuck
 	const double PlayTimeout = 240.0;
+	static int unpauses;
 
 	static EditorBenchmark()
 	{
@@ -149,10 +150,23 @@ public static class EditorBenchmark
 		if (!EditorApplication.isPlaying) return;
 		Dictionary<string, string> state = Load();
 		if (state == null || !state.ContainsKey("started")) return;
-		double started = double.Parse(state["started"], CultureInfo.InvariantCulture);
-		if (EditorApplication.timeSinceStartup - started < PlayTimeout) return;
 
-		Debug.LogError("[EditorBenchmark] run " + state["index"] + " did not finish in " + PlayTimeout + " s; stopping it");
+		//With the Console's Error Pause on, the first exception pauses play mode
+		//and an unattended run sits there until the timeout. The exception is
+		//already in the log; carry on so the run can report what followed.
+		if (EditorApplication.isPaused)
+		{
+			EditorApplication.isPaused = false;
+			if (unpauses++ < 5) Debug.LogWarning("[EditorBenchmark] play mode was paused (Error Pause); resumed");
+		}
+		double started = double.Parse(state["started"], CultureInfo.InvariantCulture);
+		//plus whatever time the run was asked to spend self-driving (SelfDriveCheck)
+		double driving;
+		double.TryParse(Arg("-benchmark-selfdrive", "0"), NumberStyles.Float, CultureInfo.InvariantCulture, out driving);
+		double timeout = PlayTimeout + Math.Max(0.0, driving);
+		if (EditorApplication.timeSinceStartup - started < timeout) return;
+
+		Debug.LogError("[EditorBenchmark] run " + state["index"] + " did not finish in " + timeout + " s; stopping it");
 		state.Remove("started");
 		Save(state);
 		EditorApplication.isPlaying = false;

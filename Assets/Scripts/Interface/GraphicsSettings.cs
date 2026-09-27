@@ -80,6 +80,8 @@ public class GraphicsSettings : MonoBehaviour
 	static bool benchmarkTour;
 	//name (or part of it) of the crop to plant; the first in the list otherwise
 	static string benchmarkCrop;
+	//seconds of Self Driving on the planted plot after measuring, see SelfDriveCheck
+	static float benchmarkSelfDrive;
 
 	float cameraScanAt;
 	readonly List<float> frameTimes = new List<float>(1024);
@@ -146,6 +148,7 @@ public class GraphicsSettings : MonoBehaviour
 			else if (a == "-benchmark-uncapped") benchmarkUncapped = true;
 			else if (a == "-benchmark-tour") benchmarkTour = true;
 			else if (a == "-benchmark-crop" && i + 1 < args.Length) benchmarkCrop = args[i + 1];
+			else if (a == "-benchmark-selfdrive" && i + 1 < args.Length) float.TryParse(args[i + 1], NumberStyles.Float, CultureInfo.InvariantCulture, out benchmarkSelfDrive);
 			else if (a == "-overlay") showOverlay = true;
 		}
 	}
@@ -162,6 +165,14 @@ public class GraphicsSettings : MonoBehaviour
 			}
 		}
 		return fallback;
+	}
+
+	static string CommandLineValue(string flag)
+	{
+		string[] args = Environment.GetCommandLineArgs();
+		for (int i = 0; i + 1 < args.Length; i++)
+			if (string.Equals(args[i], flag, StringComparison.OrdinalIgnoreCase)) return args[i + 1];
+		return null;
 	}
 
 	//Rough hardware classification. Wrong guesses cost one click on the
@@ -672,6 +683,18 @@ public class GraphicsSettings : MonoBehaviour
 			bool wheeled = ri.robot.GetComponent<DebugRover>() != null;
 			if (choice == null || (wheeled && choice.robot.GetComponent<DebugRover>() == null)) choice = ri;
 		}
+		//-benchmark-robot <name>: a particular rover (matched against the showroom
+		//object's name or its prefab's) instead of the first one
+		string wanted = CommandLineValue("-benchmark-robot");
+		if (!string.IsNullOrEmpty(wanted))
+		{
+			foreach (RobotInfo ri in infos)
+			{
+				if (ri.humanoid || ri.training || ri.robot == null || ri.robot.GetComponent<DebugRover>() == null) continue;
+				if (ri.name.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0 || ri.robot.name.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0) { choice = ri; break; }
+			}
+			Debug.Log("[Benchmark] robot " + (choice != null ? choice.robot.name : "none") + " for -benchmark-robot " + wanted);
+		}
 		if (choice == null || PathMaker.Instance == null)
 		{
 			Debug.LogError("[Benchmark] no rover selectable in the showroom");
@@ -803,6 +826,8 @@ public class GraphicsSettings : MonoBehaviour
 		if (benchmarkTour)
 			yield return StartCoroutine(BenchmarkTour.Run(shotDir,
 				"tour_" + QualitySettings.names[QualitySettings.GetQualityLevel()].Replace(" ", "") + "_" + RenderSizeText()));
+		if (benchmarkSelfDrive > 0f)
+			yield return StartCoroutine(SelfDriveCheck.Run(benchmarkSelfDrive));
 		Quit();
 	}
 

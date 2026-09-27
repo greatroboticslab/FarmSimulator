@@ -16,6 +16,11 @@
 //robots and the recent points of their tracks, set by GrassBlades.cs as x,
 //strength, z, radius) and shrink into the ground toward the edge of the drawn
 //area, so the edge never pops.
+//
+//No shadow caster pass, so no depth pre-pass: a blade a few centimetres tall
+//takes the sun's (and the clouds') shadow of the ground it stands on, which the
+//screen-space shadows already have, and that halves the vertex work. The first
+//version cost 4 ms of GPU at High 1440p in the player.
 Shader "FarmSim/GrassBlades"
 {
 	Properties
@@ -36,7 +41,7 @@ Shader "FarmSim/GrassBlades"
 		Cull Off
 
 		CGPROGRAM
-		#pragma surface surf Blade vertex:vert addshadow noforwardadd nolightmap nodynlightmap nodirlightmap nometa
+		#pragma surface surf Blade vertex:vert noforwardadd nolightmap nodynlightmap nodirlightmap nometa
 		#pragma multi_compile_instancing
 		#pragma instancing_options procedural:setup
 		#pragma target 4.5

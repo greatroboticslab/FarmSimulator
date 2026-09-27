@@ -44,8 +44,8 @@ public class GraphicsSettings : MonoBehaviour
 	static readonly bool[]  CloudShadows   = { false, false, false, true, true, true };
 	//short grass blades around the camera (GrassBlades): drawn radius in metres
 	//and clumps of six blades per square metre; none on the two lowest tiers
-	static readonly float[] BladeRadius    = { 0f, 0f, 10f, 14f, 16f, 18f };
-	static readonly float[] BladeDensity   = { 0f, 0f, 16f, 30f, 36f, 42f };
+	static readonly float[] BladeRadius    = { 0f, 0f, 9f, 12f, 14f, 16f };
+	static readonly float[] BladeDensity   = { 0f, 0f, 14f, 24f, 28f, 32f };
 	static readonly float[] DetailDist     = { 0f, 30f, 60f, 100f, 120f, 140f };
 	static readonly float[] DetailDensity  = { 0f, 0.35f, 0.6f, 0.85f, 1f, 1f };
 	static readonly float[] PixelError     = { 24f, 16f, 12f, 8f, 6f, 5f };

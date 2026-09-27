@@ -23,6 +23,8 @@ public class GrassBlades : MonoBehaviour
 	const int BladesPerClump = 6;
 	const int SegmentsPerBlade = 3;
 	const int ChunkBuildsPerFrame = 3;
+	//beyond this a chunk draws three blades per clump instead of six
+	const float LodDistance = 7f;
 	const int Benders = 8;
 	//how long the grass behind a robot takes to stand back up
 	const float TrailSeconds = 3f;
@@ -34,6 +36,10 @@ public class GrassBlades : MonoBehaviour
 	//set by the quality tier: drawn radius in metres, clumps per square metre
 	public static void Configure(float drawRadius, float clumpsPerSquareMetre)
 	{
+		//"-grass-blades off" for comparisons
+		string[] cmd = System.Environment.GetCommandLineArgs();
+		int flag = System.Array.IndexOf(cmd, "-grass-blades");
+		if (flag >= 0 && flag + 1 < cmd.Length && cmd[flag + 1] == "off") drawRadius = 0f;
 		if (Mathf.Approximately(drawRadius, radius) && Mathf.Approximately(clumpsPerSquareMetre, density)) return;
 		radius = drawRadius;
 		density = clumpsPerSquareMetre;
@@ -56,6 +62,7 @@ public class GrassBlades : MonoBehaviour
 	{
 		public ComputeBuffer data;
 		public ComputeBuffer args;
+		public ComputeBuffer argsLod;
 		public MaterialPropertyBlock props;
 		public Bounds bounds;
 		public int clumps;
@@ -76,6 +83,7 @@ public class GrassBlades : MonoBehaviour
 	Vector3 lastTrailPoint = new Vector3(1e9f, 0f, 1e9f);
 
 	Mesh clump;
+	Mesh clumpLod;
 	Material material;
 	Terrain terrain;
 	//which splat layers are grass and dry grass on this terrain (-1: none); the
@@ -96,6 +104,7 @@ public class GrassBlades : MonoBehaviour
 		{
 			if (c.data != null) c.data.Release();
 			if (c.args != null) c.args.Release();
+			if (c.argsLod != null) c.argsLod.Release();
 		}
 		chunks.Clear();
 	}
@@ -146,14 +155,17 @@ public class GrassBlades : MonoBehaviour
 			Chunk ch = chunks[k];
 			if (ch.data != null) ch.data.Release();
 			if (ch.args != null) ch.args.Release();
+			if (ch.argsLod != null) ch.argsLod.Release();
 			chunks.Remove(k);
 		}
 
 		GeometryUtility.CalculateFrustumPlanes(cam, planes);
-		foreach (Chunk ch in chunks.Values)
+		foreach (KeyValuePair<Vector2Int, Chunk> kv in chunks)
 		{
+			Chunk ch = kv.Value;
+			bool near = ChunkDistance(kv.Key, c) < LodDistance;
 			if (ch.clumps == 0 || !GeometryUtility.TestPlanesAABB(planes, ch.bounds)) continue;
-			Graphics.DrawMeshInstancedIndirect(clump, 0, material, ch.bounds, ch.args, 0, ch.props,
+			Graphics.DrawMeshInstancedIndirect(near ? clump : clumpLod, 0, material, ch.bounds, near ? ch.args : ch.argsLod, 0, ch.props,
 				ShadowCastingMode.Off, true, 0, cam, LightProbeUsage.Off);
 			DrawnClumps += ch.clumps;
 		}
@@ -181,7 +193,8 @@ public class GrassBlades : MonoBehaviour
 	//mesh, material, the ground textures and the splat weights of this terrain
 	bool Prepare()
 	{
-		if (clump == null) clump = BuildClump();
+		if (clump == null) clump = BuildClump(BladesPerClump);
+		if (clumpLod == null) clumpLod = BuildClump(BladesPerClump / 2);
 		if (material == null)
 		{
 			Shader s = Resources.Load<Shader>("FarmGrassBlades");
@@ -266,6 +279,8 @@ public class GrassBlades : MonoBehaviour
 		ch.data.SetData(buildData);
 		ch.args = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
 		ch.args.SetData(new uint[] { clump.GetIndexCount(0), (uint)ch.clumps, clump.GetIndexStart(0), clump.GetBaseVertex(0), 0 });
+		ch.argsLod = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+		ch.argsLod.SetData(new uint[] { clumpLod.GetIndexCount(0), (uint)ch.clumps, clumpLod.GetIndexStart(0), clumpLod.GetBaseVertex(0), 0 });
 		ch.props = new MaterialPropertyBlock();
 		ch.props.SetBuffer(DataId, ch.data);
 		ch.bounds = new Bounds(
@@ -313,18 +328,20 @@ public class GrassBlades : MonoBehaviour
 		}
 	}
 
-	//Six tapered blades 12-22 cm tall around a 6 cm circle, each three segments
+	//Tapered blades (six, or three far off) 12-22 cm tall around a 6 cm circle, each three segments
 	//curving over to a point. Normals mostly up, like the ground, so a lawn of
 	//them lights like the terrain it grows from. Vertex colour: R a per-blade
 	//random, G height along the blade, B a per-blade phase.
-	static Mesh BuildClump()
+	//The far version is the first half of the same blades, so a chunk switching
+	//over loses blades rather than moving them.
+	static Mesh BuildClump(int blades)
 	{
 		System.Random rnd = new System.Random(7);
 		List<Vector3> verts = new List<Vector3>();
 		List<Vector3> normals = new List<Vector3>();
 		List<Color> colours = new List<Color>();
 		List<int> tris = new List<int>();
-		for (int b = 0; b < BladesPerClump; b++)
+		for (int b = 0; b < blades; b++)
 		{
 			float a = (float)rnd.NextDouble() * Mathf.PI * 2f;
 			float rr = 0.06f * Mathf.Sqrt((float)rnd.NextDouble());

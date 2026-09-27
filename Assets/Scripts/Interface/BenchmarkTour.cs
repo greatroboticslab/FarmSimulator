@@ -94,6 +94,20 @@ public static class BenchmarkTour
 		cam.transform.SetPositionAndRotation(savedPos, savedRot);
 		cam.fieldOfView = savedFov;
 		if (driver != null) driver.enabled = driverWas;
+
+		//"-benchmark-tutorial": every page of the in-game manual, to check that
+		//the text fits the book
+		if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-benchmark-tutorial") >= 0)
+		{
+			for (int page = 0; TutorialBook.ShowPage(page); page++)
+			{
+				for (int i = 0; i < 3; i++) yield return null;
+				ScreenCapture.CaptureScreenshot(Path.Combine(dir, prefix + "_tutorial_" + (page + 1) + ".png"));
+				yield return null;
+				yield return new WaitForSecondsRealtime(0.3f);
+			}
+			TutorialBook.Hide();
+		}
 	}
 
 	//scattered props are children of the map's ObjectPlacer, named after their

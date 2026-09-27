@@ -21,13 +21,16 @@ public class TutorialBook : MonoBehaviour
 			"2. Pick a farm and press Go to Farm\n" +
 			"3. Build a crop plot\n" +
 			"4. Work it yourself, or let the robot do it\n\n" +
+			"The line at the top of the screen always says what the robot is doing, or what it needs from you.\n\n" +
 			"Flip through this manual with Next, or close it and come back anytime with the Tutorial button on the right."),
 
 		new Page("Driving",
 			"W / S - drive forward and backward\n" +
-			"A / D - steer left and right\n\n" +
-			"The camera follows your robot automatically.\n\n" +
-			"Toggle View (top left button) switches camera angles. " +
+			"A / D - steer left and right\n" +
+			"Hold 1-7 and press W / S - move one joint of the robot's arm\n" +
+			"Left click on the field - switch the robot's light on or off\n\n" +
+			"The camera follows your robot; hold the right mouse button and move to orbit it, " +
+			"and scroll to zoom. Toggle View (top left button) switches camera angles. " +
 			"If you flip your robot over, use the Flip Robot button on the right panel to right it.\n\n" +
 			"Watch the Power readout at the bottom right; driving and lights drain the battery."),
 
@@ -50,7 +53,9 @@ public class TutorialBook : MonoBehaviour
 
 		new Page("Self-Driving and Lasers",
 			"Tick Self Driving (top right) or tell the chat to start farming.\n\n" +
-			"The robot drives the planted rows waypoint by waypoint and works as it goes.\n\n" +
+			"The robot drives the planted rows waypoint by waypoint and works as it goes. " +
+			"The line at the top follows along: the stop it is on, the fruit it is picking and " +
+			"how far along, the soil reading it just took, and when the rows are done.\n\n" +
 			"Every rover carries a crop detector: it scans nearby plants, tells crops from weeds, " +
 			"and locks a visible laser onto its current target. Red beam means a normal rover; " +
 			"the UV robot lases violet."),
@@ -67,21 +72,26 @@ public class TutorialBook : MonoBehaviour
 			"Tutorial - reopens this manual\n" +
 			"Graphics - cycles quality from Very Low to Ultra; drop it if the game " +
 			"runs slowly, raise it if your machine can spare the power. Your choice " +
-			"is remembered next time you play."),
+			"is remembered next time you play.\n" +
+			"Render - the resolution the farm is drawn at; Auto follows the quality level\n" +
+			"Sky - midday, late afternoon or overcast"),
 
 		new Page("Rovers: Cutting and UV",
-			"Cutting Robot and Cutting Robot 2 hunt weeds. Their detectors prefer weeds " +
-			"over crops, so their laser shows you exactly which weed is next.\n\n" +
-			"The UV Robot and Laser Cart carry a sterilizing ultraviolet light. Drive close to " +
-			"moldy crops with the light on and the mold burns off. The violet glow under the " +
+			"Cutting Robot and Cutting Robot 2 harvest fruit. In self-driving they stop at each " +
+			"plant, reach in with the arm and snip the fruit off. Plant a fruiting crop such as " +
+			"pepper; soybean has nothing to cut, and the robot says so and moves on.\n\n" +
+			"The UV Robot and Laser Cart carry a sterilizing ultraviolet light and sweep each row " +
+			"with it on. Mold on the crops burns off and weeds under the light die, but a crop " +
+			"kept under it after its mold is gone is damaged as well. The violet glow under the " +
 			"cart shows the treatment area."),
 
 		new Page("Rovers: Moisture and Grabbing",
 			"The Moisture Sensing Robot samples soil water at each crop. Its readings show " +
 			"in the Moisture display at the bottom right; in self-driving it measures every " +
 			"plant on the row automatically.\n\n" +
-			"The Grabbing Robot has an articulated arm and a basket. It targets ripe fruit " +
-			"and harvests into the basket; the Basket Load readout tracks the weight collected."),
+			"The Grabbing Robot has an articulated arm with a gripper. At each plant it lines up, " +
+			"reaches, grips a fruit and swings it over to its basket spot. Robots that carry a " +
+			"basket show a Basket Load readout with the weight collected."),
 
 		new Page("Humanoids",
 			"HumanoidR + Rover: a walking robot with a basket rover that follows and parks near you.\n\n" +
@@ -115,6 +125,23 @@ public class TutorialBook : MonoBehaviour
 		instance.page = 0;
 		instance.Refresh();
 		instance.panel.SetActive(true);
+	}
+
+	//Open at a page (0-based); false past the last one. For the benchmark tour,
+	//which photographs every page.
+	public static bool ShowPage(int index)
+	{
+		if (index < 0 || index >= Pages.Length) return false;
+		Show();
+		if (instance == null) return false;
+		instance.page = index;
+		instance.Refresh();
+		return true;
+	}
+
+	public static void Hide()
+	{
+		if (instance != null) instance.panel.SetActive(false);
 	}
 
 	//Clones an existing HUD button so the Tutorial button matches its siblings
@@ -180,6 +207,11 @@ public class TutorialBook : MonoBehaviour
 
 		//body
 		bodyText = MakeText(bookGO.transform, "Body", new Vector2(0f, -15f), new Vector2(620f, 330f), 17f, FontStyles.Normal);
+		//the longest pages run past 330 px at 17 pt; shrink those to fit rather
+		//than spill over the page controls
+		bodyText.enableAutoSizing = true;
+		bodyText.fontSizeMin = 12f;
+		bodyText.fontSizeMax = 17f;
 		bodyText.alignment = TextAlignmentOptions.TopLeft;
 
 		//page counter

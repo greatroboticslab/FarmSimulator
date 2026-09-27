@@ -63,9 +63,13 @@ public class RoverControls : MonoBehaviour
 			if(scienceQA != null) PathMaker.Instance.rover.scienceQA = scienceQA.isOn;
 		}
 		
-		if(PathMaker.Instance != null && PathMaker.Instance.humanoidRobot) {
+		//Only a humanoid the player is driving. With a rover, the first plot also
+		//spawns a companion humanoid (PlantZone), and handing it the toggle set it
+		//working the rover's waypoint queue: it took every other waypoint and threw
+		//at the first plant to pick, having no basket rover of its own.
+		if(PathMaker.Instance != null && PathMaker.Instance.humanoidRobot && PathMaker.Instance.humanoidRobot.playerControlled) {
 			if(frictionDisplay != null) frictionDisplay.text = "Friction: " + PathMaker.Instance.humanoidRobot.currentFriction;
-			if(selfDriving) {			
+			if(selfDriving) {
 				PathMaker.Instance.humanoidRobot.selfDriving = selfDriving.isOn;
 			}
 		}

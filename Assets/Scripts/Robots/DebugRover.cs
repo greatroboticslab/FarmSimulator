@@ -72,7 +72,6 @@ public class DebugRover : MonoBehaviour
 	
 	private bool oneLineRecord = false;
 	private StreamWriter infoFile;
-	private bool gotWaypoint;
 	
 	public Text outGui;
 	
@@ -776,11 +775,14 @@ public class DebugRover : MonoBehaviour
 			//Debug.Log("TS: " + timeSpawned);
 		}
 		
-		if(!gotWaypoint) {
-			if(PathMaker.Instance.loaded) {
-				gotWaypoint = true;
-				currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
-			}
+		//Take the next waypoint whenever there is none and the queue has one.
+		//This was a one-shot the first time PathMaker.loaded was true, and since
+		//6558085e3 the farm map sets that on load, before any plot exists: the
+		//rover took nothing from the empty queue, never asked again, and Self
+		//Driving never started on a plot planted afterwards.
+		if(currentWaypoint == null && PathMaker.Instance.loaded
+		   && PathMaker.Instance.waypoints != null && PathMaker.Instance.waypoints.Count > 0) {
+			currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
 		}
 		
 		
@@ -908,10 +910,15 @@ public class DebugRover : MonoBehaviour
 	}
 	
 	public void ManualDriveUpdate() {
-		
-		//Robot arm controls
+
+		//Robot arm controls. Every joint input is written here each physics step
+		//(RobotArm.manualControl keeps them until then), so a released key stops
+		//its joint.
 		selectedJoint = -1;
 		if(robotArm != null) {
+			for(int i = 0; i < robotArm.joints.Count; i++) {
+				robotArm.joints[i].input = 0f;
+			}
 			for(int i = 0; i < 9; i++) {
 				string c = (i+1).ToString();
 				if(i < robotArm.joints.Count) {
@@ -961,6 +968,9 @@ public class DebugRover : MonoBehaviour
 	
 	public void FixedUpdate() {
 
+		if(robotArm != null) {
+			robotArm.manualControl = !selfDriving;
+		}
 		if(selfDriving) {
 			//SelfDriveUpdate();
 			SelfDriveUpdate_2();

@@ -792,6 +792,13 @@ public class HumanoidRobot : MonoBehaviour
 	}
 	
 	public void HarvestCrop(Plant p) {
+		//Nothing to pick (soybean has no fruit bodies, or the plant is picked
+		//clean): leave the humanoid standing. This used to throw below after
+		//kneeling and setting harvesting, before the next waypoint was taken.
+		if(p == null || p.fruits == null || p.fruits.Count == 0 || p.fruits[0] == null) {
+			Debug.Log("[HumanoidRobot] " + (p != null ? p.name : "no plant") + ": nothing to pick");
+			return;
+		}
 		actor.anim.SetBool("harvesting",true);
 		Debug.Log("Harvesting!");
 		harvesting = true;
@@ -1338,7 +1345,11 @@ public class HumanoidRobot : MonoBehaviour
 							currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
 						}
 						else if(currentWaypoint.pickFruit) {
-							if(Vector3.Distance(transform.position, basketRover.transform.position) <= 3.2f) {
+							//no basket rover to fill: nothing to do at this plant
+							if(basketRover == null) {
+								currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
+							}
+							else if(Vector3.Distance(transform.position, basketRover.transform.position) <= 3.2f) {
 								
 								HarvestCrop(currentWaypoint.plant.GetComponent<Plant>());
 								currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
@@ -1490,11 +1501,14 @@ public class HumanoidRobot : MonoBehaviour
 			}
 		}
 		
-		if(!gotWaypoint) {
-			if(PathMaker.Instance.loaded) {
-				gotWaypoint = true;
-				currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
-			}
+		//Same as DebugRover: take the next waypoint whenever there is none, not
+		//once at the first moment PathMaker.loaded was true (the map sets it on
+		//load, before any plot). Only a humanoid the player is driving: the
+		//companion a rover's first plot spawns took the plot's first waypoint here.
+		if(playerControlled && currentWaypoint == null && PathMaker.Instance.loaded
+		   && PathMaker.Instance.waypoints != null && PathMaker.Instance.waypoints.Count > 0) {
+			gotWaypoint = true;
+			currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
 		}
 		
 		

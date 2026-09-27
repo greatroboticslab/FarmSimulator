@@ -42,6 +42,10 @@ public class GraphicsSettings : MonoBehaviour
 	//cloud shadows ride on the sun's shadow and end with it (SkyPresets); at
 	//40-70 m they would be a dark patch travelling with the camera
 	static readonly bool[]  CloudShadows   = { false, false, false, true, true, true };
+	//short grass blades around the camera (GrassBlades): drawn radius in metres
+	//and clumps of six blades per square metre; none on the two lowest tiers
+	static readonly float[] BladeRadius    = { 0f, 0f, 10f, 14f, 16f, 18f };
+	static readonly float[] BladeDensity   = { 0f, 0f, 16f, 30f, 36f, 42f };
 	static readonly float[] DetailDist     = { 0f, 30f, 60f, 100f, 120f, 140f };
 	static readonly float[] DetailDensity  = { 0f, 0.35f, 0.6f, 0.85f, 1f, 1f };
 	static readonly float[] PixelError     = { 24f, 16f, 12f, 8f, 6f, 5f };
@@ -341,6 +345,7 @@ public class GraphicsSettings : MonoBehaviour
 
 		QualitySettings.shadowDistance = Pick(ShadowDist, level);
 		SkyPresets.AllowCloudShadows(Pick(CloudShadows, level));
+		GrassBlades.Configure(Pick(BladeRadius, level), Pick(BladeDensity, level));
 		//the generated trees' full-detail LOD is several thousand triangles of
 		//alpha-tested cards; Very Low starts at the reduced one
 		QualitySettings.maximumLODLevel = Pick(MinLod, level);

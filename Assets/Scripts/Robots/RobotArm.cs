@@ -64,6 +64,7 @@ public bool harvesting;
 		int first = NextFruit(p, 0);
 		if(first < 0) {
 			Debug.Log("[RobotArm] " + (p != null ? p.name : "no plant") + ": nothing to pick");
+			RobotStatus.Notice(RobotStatus.CropName(p) + ": no fruit on this plant to pick, moving on");
 			harvesting = false;
 			return;
 		}
@@ -76,8 +77,12 @@ public bool harvesting;
 
 	public void SkipFruit() {
 		Debug.Log("Time limit reached, skipping fruit! (stage " + stage + ", closest " + closest.ToString("0.000") + " m, needs " + minDist.ToString("0.000") + ")");
+		RobotStatus.Notice("Could not reach that fruit in time: skipping it", 3f);
 		NextFruitOrFinish();
 	}
+
+	//for the HUD's status line: snip or grip
+	public bool IsCutter { get { return cutter; } }
 
 	//nearest the working spot came to its target in the current stage, for the log
 	float closest = float.MaxValue;

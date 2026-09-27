@@ -15,7 +15,8 @@ using UnityEngine;
 //Progress is also logged every 10 s so a stall shows where it happened.
 public static class SelfDriveCheck
 {
-	public static IEnumerator Run(float seconds)
+	//shotDir: where to save one screenshot halfway through (null for none)
+	public static IEnumerator Run(float seconds, string shotDir = null)
 	{
 		PathMaker pm = PathMaker.Instance;
 		DebugRover rover = pm != null ? pm.rover : null;
@@ -55,9 +56,18 @@ public static class SelfDriveCheck
 		controls.selfDriving.isOn = true;
 
 		float start = Time.unscaledTime, nextReport = start + 10f;
+		bool shot = string.IsNullOrEmpty(shotDir);
 		while (Time.unscaledTime - start < seconds)
 		{
 			yield return null;
+			if (!shot && Time.unscaledTime - start >= seconds * 0.5f)
+			{
+				shot = true;
+				string crop = pm.selectedCrop != null ? pm.selectedCrop.name : "none";
+				string file = System.IO.Path.Combine(shotDir, "selfdrive_" + rover.name.Replace("(Clone)", "") + "_" + crop + ".png");
+				ScreenCapture.CaptureScreenshot(file);
+				Debug.Log("[SelfDrive] screenshot " + file);
+			}
 			Vector3 p = rover.transform.position;
 			moved += Vector3.Distance(p, lastPos);
 			lastPos = p;
@@ -76,9 +86,10 @@ public static class SelfDriveCheck
 			{
 				nextReport += 10f;
 				Debug.Log(string.Format(CultureInfo.InvariantCulture,
-					"[SelfDrive] {0:0} s: at ({1:0.0}, {2:0.0}), waypoints left {3}, harvesting {4}, stage {5}, fruit {6}, moved {7:0.0} m, exceptions {8}",
+					"[SelfDrive] {0:0} s: at ({1:0.0}, {2:0.0}), waypoints left {3}, harvesting {4}, stage {5}, fruit {6}, moved {7:0.0} m, exceptions {8}, HUD \"{9}\"",
 					Time.unscaledTime - start, p.x, p.z, pm.waypoints != null ? pm.waypoints.Count : 0,
-					arm != null && arm.harvesting, arm != null ? arm.stage : -1, arm != null ? arm.currentFruit : -1, moved, exceptions));
+					arm != null && arm.harvesting, arm != null ? arm.stage : -1, arm != null ? arm.currentFruit : -1, moved, exceptions,
+					RobotStatus.Current ?? ""));
 			}
 		}
 

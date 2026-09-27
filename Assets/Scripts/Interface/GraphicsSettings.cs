@@ -827,7 +827,7 @@ public class GraphicsSettings : MonoBehaviour
 			yield return StartCoroutine(BenchmarkTour.Run(shotDir,
 				"tour_" + QualitySettings.names[QualitySettings.GetQualityLevel()].Replace(" ", "") + "_" + RenderSizeText()));
 		if (benchmarkSelfDrive > 0f)
-			yield return StartCoroutine(SelfDriveCheck.Run(benchmarkSelfDrive));
+			yield return StartCoroutine(SelfDriveCheck.Run(benchmarkSelfDrive, shotDir));
 		Quit();
 	}
 

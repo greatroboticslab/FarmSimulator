@@ -49,6 +49,8 @@ public class RoverControls : MonoBehaviour
 		//Tutorial and Graphics buttons join the right-side panel, cloned to match
 		TutorialBook.AttachHudButton(mainMenuButton);
 		GraphicsSettings.AttachHudButton(mainMenuButton);
+		//and a line at the top saying what the robot is doing
+		RobotStatus.Attach(this, mainMenuButton);
     }
 
     // Update is called once per frame

@@ -139,6 +139,11 @@ public class RobotStatus : MonoBehaviour
 		else if (wp.checkWater)
 			doing = r.timeSinceMeasure < 3f ? "Soil moisture here: " + r.measuredWater.ToString("0") + "%" : "Driving to the next moisture check";
 		else if (r.lightOn) doing = "Treating the row with UV light";
+		//robotType 0 is the moisture robot: its path alternates a drive to each
+		//plant with an aim-and-measure stop
+		else if (r.robotType == 0) doing = r.timeSinceMeasure < 3f
+			? "Soil moisture at the last plant: " + r.measuredWater.ToString("0") + "%"
+			: "Driving to the next plant to check its soil";
 		else doing = "Driving along the rows";
 		return doing + progress;
 	}

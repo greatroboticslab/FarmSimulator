@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 //using System.Time;
 
 public class DebugRover : MonoBehaviour
@@ -809,7 +810,10 @@ public class DebugRover : MonoBehaviour
         rb.AddTorque(transform.up * sideF);
     	*/
 
-		if(Input.GetMouseButtonDown(0) || 
+		//A left click in the farm toggles the light; not one on a HUD button, the
+		//chat or a menu, and not while clicking out plots or traction patches,
+		//which all toggled it too
+		if((Input.GetMouseButtonDown(0) && !ClickIsForSomethingElse()) ||
 		(!triggerDown && OVRInput.Get(OVRInput.RawButton.RIndexTrigger))) {
 			triggerDown = true;
 			if(lightOn) {
@@ -885,6 +889,12 @@ public class DebugRover : MonoBehaviour
     
     }
 	
+	static bool ClickIsForSomethingElse() {
+		if(EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return true;
+		Manip m = PathMaker.Instance != null ? PathMaker.Instance.manip : null;
+		return m != null && (m.placingPlot || m.placingTraction);
+	}
+
 	public void StartRecording() {
 		string hdr = dataHeader;
 		if(scienceQA) {
@@ -1021,7 +1031,15 @@ public class DebugRover : MonoBehaviour
 		
 		if(recording) {
 			if(recordTime >= 1f/recordSpeed) {
-					rCam.CaptureFrame(curRecordDir);
+					//the Moisture, Grabbing, UV and Laser Cart robots have no
+					//recording camera (rCam unset in their prefabs) and threw here
+					//on every frame; they record the data files without images
+					if(rCam != null) {
+						rCam.CaptureFrame(curRecordDir);
+					}
+					else if(frame == 0) {
+						Debug.Log("[DebugRover] " + name + " has no recording camera; recording data without images");
+					}
 					
 					if(oneLineRecord) {
 						infoFile.Write(GetInfo(", ")+'\n');

@@ -84,6 +84,52 @@ public bool harvesting;
 	//for the HUD's status line: snip or grip
 	public bool IsCutter { get { return cutter; } }
 
+	//How the arm reaches. The original finite-difference gradient descent, with
+	//these gains, clamps nearly every step to a fixed speed and ended 4-36 cm
+	//short of most fruit (SelfDriveCheck logs), so almost nothing was picked.
+	//Cyclic coordinate descent (SolveCCD) instead; off brings the original back.
+	public bool ccdReach = true;
+	//fraction of each joint's maxDelta it may turn per second while reaching
+	public float ccdSpeed = 0.35f;
+
+	//Cyclic coordinate descent: from the joint nearest the tool back to the base,
+	//each rotator turns about its own axis to swing the working spot toward the
+	//target, at most ccdSpeed of its maxDelta per second so the arm still moves
+	//like a machine, and a turn that would put the spot further from the target
+	//is undone. The base slider slides along its axis within min..max.
+	void SolveCCD(Transform spot, Vector3 target, float dt) {
+		for(int i = joints.Count - 1; i >= 0; i--) {
+			RobotJoint j = joints[i];
+			if(j.obj == null) continue;
+			Transform t = j.obj.transform;
+			float step = j.maxDelta * ccdSpeed * dt;
+			if(j.type == 0) {
+				Vector3 axis = t.rotation * j.axis;
+				if(axis.sqrMagnitude < 1e-8f) continue;
+				axis.Normalize();
+				Vector3 toSpot = Vector3.ProjectOnPlane(spot.position - t.position, axis);
+				Vector3 toTarget = Vector3.ProjectOnPlane(target - t.position, axis);
+				if(toSpot.sqrMagnitude < 1e-6f || toTarget.sqrMagnitude < 1e-6f) continue;
+				float angle = Mathf.Clamp(Vector3.SignedAngle(toSpot, toTarget, axis), -step, step);
+				if(Mathf.Abs(angle) < 1e-4f) continue;
+				float before = (spot.position - target).sqrMagnitude;
+				Quaternion was = t.rotation;
+				t.rotation = Quaternion.AngleAxis(angle, axis) * was;
+				if((spot.position - target).sqrMagnitude > before) t.rotation = was;
+			}
+			else if(j.type == 1) {
+				//localPosition is in the parent's space, as in the original slider
+				Vector3 perUnit = t.parent != null ? t.parent.TransformVector(j.axis) : j.axis;
+				float len = perUnit.magnitude;
+				if(len < 1e-6f) continue;
+				float along = Vector3.Dot(target - spot.position, perUnit / len) / len;
+				Vector3 lp = t.localPosition + j.axis * Mathf.Clamp(along, -step, step);
+				lp.x = Mathf.Clamp(lp.x, j.min, j.max);
+				t.localPosition = lp;
+			}
+		}
+	}
+
 	//nearest the working spot came to its target in the current stage, for the log
 	float closest = float.MaxValue;
 	int closestStage = -1;
@@ -229,7 +275,9 @@ public bool harvesting;
                 currentTarget = basketSpot;
             }
 
-			for(int i = 0; i < joints.Count; i++) {
+			//the original finite-difference gradient descent; with ccdReach the
+			//joints are turned by SolveCCD below instead
+			for(int i = 0; i < joints.Count && !ccdReach; i++) {
 				if(joints[i].type < 2) {
 					gradients[i] = GetGradient(i);
 					float moveAmount = gradients[i] * lr;
@@ -357,6 +405,10 @@ public bool harvesting;
                         if(joints[joints.Count-1].curVal <= 0.02f) {
                             NextFruitOrFinish();
                         }
+					}
+
+					if(harvesting && ccdReach && !freeze && currentSpot != null) {
+						SolveCCD(currentSpot, targetPos, Time.deltaTime);
 					}
 
 				}

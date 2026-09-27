@@ -68,39 +68,12 @@ public class PlantZone : MonoBehaviour
 		int weedAmount = (int)(x*z*weedDensity);
 
 
-		//Place human
-		RaycastHit h_hit;
-        Vector3 h_startPos = transform.position + new Vector3(x*1.1f,0,z*-1.1f);
-        if (Physics.Raycast(h_startPos, transform.TransformDirection(-Vector3.up), out h_hit, RayLength))
-        {
-
-			if(PathMaker.Instance.plotHuman != null) {
-	            GameObject newHuman = Instantiate(PathMaker.Instance.plotHuman);
-			    newHuman.transform.SetParent(PathMaker.Instance.FarmContents, false);
-			    newHuman.transform.position = h_hit.point;
-				//a bystander standing in a field does not need its skeleton
-				//evaluated while it is off screen
-				foreach(Animator a in newHuman.GetComponentsInChildren<Animator>(true)) {
-					a.cullingMode = AnimatorCullingMode.CullCompletely;
-				}
-			}
-
-			//one companion is enough: this spawned a fresh 30-body ragdoll for
-			//every plot, and replaced the player's own humanoid reference when
-			//the player was controlling one
-			if(PathMaker.Instance.humanoidRobotPrefab != null && !PathMaker.Instance.humanoid
-			   && PathMaker.Instance.humanoidRobot == null) {
-				GameObject newHumanoidRobot = Instantiate(PathMaker.Instance.humanoidRobotPrefab);
-				newHumanoidRobot.transform.position = h_hit.point + new Vector3(1.5f, 0, 0);
-				HumanoidRobot spawnedHR = newHumanoidRobot.GetComponent<HumanoidRobot>();
-				if(spawnedHR != null) {
-					spawnedHR.actor = PathMaker.Instance.actor;
-					spawnedHR.playerControlled = false;
-					PathMaker.Instance.humanoidRobot = spawnedHR;
-				}
-			}
-
-        }
+		//A plot no longer brings people with it. Every plot put a "Doctor"
+		//bystander (PathMaker.plotHuman) at its corner, and a rover's first plot
+		//also a humanoid robot, which had no job (given the rover's Self Driving
+		//it stole its waypoints and threw), stood waist-deep (its origin is at
+		//the hips and it went in at ground height) and cost 30 rigidbodies. A
+		//player who wants a humanoid picks one on the select screen.
 
 
 

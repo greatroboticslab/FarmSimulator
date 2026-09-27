@@ -53,16 +53,26 @@ public static class SelfDriveCheck
 
 		Debug.Log("[SelfDrive] start: robot " + rover.name + ", crop " + (pm.selectedCrop != null ? pm.selectedCrop.name : "none")
 			+ ", " + waypointsAtStart + " waypoints, arm " + (arm != null ? "yes" : "no"));
+		LogFigures();
 		controls.selfDriving.isOn = true;
 
 		float start = Time.unscaledTime, nextReport = start + 10f;
 		bool shot = string.IsNullOrEmpty(shotDir);
+		//and one early, while the robot is still crossing the grass to its plot
+		bool earlyShot = shot;
 		//a moisture reading resets the rover's timeSinceMeasure
 		int readings = 0;
 		float lastSince = rover.timeSinceMeasure;
 		while (Time.unscaledTime - start < seconds)
 		{
 			yield return null;
+			if (!earlyShot && Time.unscaledTime - start >= 4f)
+			{
+				earlyShot = true;
+				string early = System.IO.Path.Combine(shotDir, "selfdrive_" + rover.name.Replace("(Clone)", "") + "_early.png");
+				ScreenCapture.CaptureScreenshot(early);
+				Debug.Log("[SelfDrive] screenshot " + early);
+			}
 			if (!shot && Time.unscaledTime - start >= seconds * 0.5f)
 			{
 				shot = true;
@@ -138,6 +148,34 @@ public static class SelfDriveCheck
 		Debug.Log("[SelfDrive] Main Menu: plants " + plantsBefore + " -> " + UnityEngine.Object.FindObjectsOfType<Plant>(true).Length
 			+ ", plots " + plotsBefore + " -> " + UnityEngine.Object.FindObjectsOfType<PlantZone>(true).Length
 			+ ", waypoints queued " + (pm.waypoints != null ? pm.waypoints.Count : 0) + ", marker " + (pm.currentWayPointObj != null ? "left" : "gone"));
+	}
+
+	//Every animated figure in the farm (people, humanoid robots) with how far its
+	//lowest visible point is below the ground under it, to catch anything
+	//spawned into the terrain
+	static void LogFigures()
+	{
+		Terrain t = Terrain.activeTerrain;
+		int n = 0;
+		foreach (Animator a in UnityEngine.Object.FindObjectsOfType<Animator>())
+		{
+			if (a.GetComponentInParent<Animator>() != a) continue;
+			Renderer[] rs = a.GetComponentsInChildren<Renderer>();
+			if (rs.Length == 0) continue;
+			Bounds b = rs[0].bounds;
+			foreach (Renderer r in rs) b.Encapsulate(r.bounds);
+			Vector3 p = a.transform.position;
+			string below = "";
+			if (t != null)
+			{
+				float ground = t.SampleHeight(p) + t.transform.position.y;
+				below = string.Format(CultureInfo.InvariantCulture, ", lowest point {0:0.00} m {1} the ground", Mathf.Abs(b.min.y - ground), b.min.y < ground ? "below" : "above");
+			}
+			Debug.Log(string.Format(CultureInfo.InvariantCulture, "[SelfDrive] figure {0} at ({1:0.0}, {2:0.0}, {3:0.0}), {4:0.00} m tall{5}",
+				a.transform.root.name, p.x, p.y, p.z, b.size.y, below));
+			if (++n >= 20) break;
+		}
+		if (n == 0) Debug.Log("[SelfDrive] no animated figures in the farm");
 	}
 
 	static string FirstLine(string s)

@@ -155,8 +155,7 @@ public static class SelfDriveCheck
 	//spawned into the terrain
 	static void LogFigures()
 	{
-		Terrain t = Terrain.activeTerrain;
-		int n = 0;
+		int total = 0, onGround = 0, sunk = 0, floating = 0, listed = 0;
 		foreach (Animator a in UnityEngine.Object.FindObjectsOfType<Animator>())
 		{
 			if (a.GetComponentInParent<Animator>() != a) continue;
@@ -165,17 +164,31 @@ public static class SelfDriveCheck
 			Bounds b = rs[0].bounds;
 			foreach (Renderer r in rs) b.Encapsulate(r.bounds);
 			Vector3 p = a.transform.position;
-			string below = "";
-			if (t != null)
-			{
-				float ground = t.SampleHeight(p) + t.transform.position.y;
-				below = string.Format(CultureInfo.InvariantCulture, ", lowest point {0:0.00} m {1} the ground", Mathf.Abs(b.min.y - ground), b.min.y < ground ? "below" : "above");
-			}
-			Debug.Log(string.Format(CultureInfo.InvariantCulture, "[SelfDrive] figure {0} at ({1:0.0}, {2:0.0}, {3:0.0}), {4:0.00} m tall{5}",
-				a.transform.root.name, p.x, p.y, p.z, b.size.y, below));
-			if (++n >= 20) break;
+			Terrain t = TerrainUnder(p);
+			total++;
+			if (t == null) continue;
+			//how far the lowest visible point is from the ground: feet a few
+			//centimetres into the grass are fine, a body into the ground or a
+			//person in mid-air is not
+			float off = b.min.y - (t.SampleHeight(p) + t.transform.position.y);
+			if (Mathf.Abs(off) <= 0.15f) { onGround++; continue; }
+			if (off < 0f) sunk++; else floating++;
+			if (listed++ < 10)
+				Debug.Log(string.Format(CultureInfo.InvariantCulture, "[SelfDrive] figure {0} at ({1:0.0}, {2:0.0}, {3:0.0}), {4:0.00} m tall, lowest point {5:0.00} m {6} the ground",
+					a.name, p.x, p.y, p.z, b.size.y, Mathf.Abs(off), off < 0f ? "below" : "above"));
 		}
-		if (n == 0) Debug.Log("[SelfDrive] no animated figures in the farm");
+		Debug.Log("[SelfDrive] figures: " + total + " (on the ground " + onGround + ", sunk more than 15 cm " + sunk + ", floating more than 15 cm " + floating + ")");
+	}
+
+	static Terrain TerrainUnder(Vector3 p)
+	{
+		foreach (Terrain t in Terrain.activeTerrains)
+		{
+			if (t == null || t.terrainData == null) continue;
+			Vector3 o = t.transform.position, s = t.terrainData.size;
+			if (p.x >= o.x && p.x <= o.x + s.x && p.z >= o.z && p.z <= o.z + s.z) return t;
+		}
+		return null;
 	}
 
 	static string FirstLine(string s)

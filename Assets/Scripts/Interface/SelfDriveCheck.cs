@@ -57,6 +57,9 @@ public static class SelfDriveCheck
 
 		float start = Time.unscaledTime, nextReport = start + 10f;
 		bool shot = string.IsNullOrEmpty(shotDir);
+		//a moisture reading resets the rover's timeSinceMeasure
+		int readings = 0;
+		float lastSince = rover.timeSinceMeasure;
 		while (Time.unscaledTime - start < seconds)
 		{
 			yield return null;
@@ -71,6 +74,8 @@ public static class SelfDriveCheck
 			Vector3 p = rover.transform.position;
 			moved += Vector3.Distance(p, lastPos);
 			lastPos = p;
+			if (rover.timeSinceMeasure < lastSince) readings++;
+			lastSince = rover.timeSinceMeasure;
 			if (arm != null)
 			{
 				//stage 4 is the drop over the basket; leaving it means the fruit went in
@@ -101,6 +106,27 @@ public static class SelfDriveCheck
 			seconds, pm.waypoints != null ? pm.waypoints.Count : 0, waypointsAtStart, plantsVisited, starts, drops, timedOut, nothingToPick,
 			basket, rover.basket != null ? "" : " (no basket on this robot)", moved, exceptions));
 		if (firstException != null) Debug.Log("[SelfDrive] first exception: " + firstException);
+
+		//what the UV lamp and the moisture probe did to and with the plot
+		//(Plant.Start sets crops to mold 20, health 40; weeds to mold 0)
+		int crops = 0, moldDown = 0, deadCrops = 0, weeds = 0, deadWeeds = 0;
+		foreach (Plant pl in Plant.All)
+		{
+			if (pl == null) continue;
+			if (pl.desired)
+			{
+				crops++;
+				if (pl.mold < 20f) moldDown++;
+				if (pl.health <= 0f) deadCrops++;
+			}
+			else
+			{
+				weeds++;
+				if (pl.health <= 0f) deadWeeds++;
+			}
+		}
+		Debug.Log("[SelfDrive] plants: crops " + crops + " (mold reduced on " + moldDown + ", dead " + deadCrops + "), weeds " + weeds
+			+ " (dead " + deadWeeds + "), moisture readings " + readings);
 	}
 
 	static string FirstLine(string s)

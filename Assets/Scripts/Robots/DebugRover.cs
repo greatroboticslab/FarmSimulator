@@ -150,9 +150,12 @@ public class DebugRover : MonoBehaviour
 		
 		if (Physics.Raycast(probe.position, transform.TransformDirection(probe.forward), out hit, 10, layerMask))
 		{
-			Plant p = hit.collider.gameObject.GetComponent<Plant>();
-			measuredWater = p.water;
-			Debug.Log(measuredWater);
+			//anything else on the Plant layer (a fruit, say) has no reading
+			Plant p = hit.collider.GetComponentInParent<Plant>();
+			if(p != null) {
+				measuredWater = p.water;
+				Debug.Log(measuredWater);
+			}
 			
 		}
 	}

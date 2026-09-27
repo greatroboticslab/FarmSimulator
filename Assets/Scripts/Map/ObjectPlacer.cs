@@ -82,7 +82,8 @@ public class ObjectPlacer : MonoBehaviour
 
 			//bounded ray instead of Mathf.Infinity: the terrain is never more than a
 			//few hundred meters below the cast origin
-			if (Physics.Raycast(rayPos, Vector3.down, out hit, 1000f, ~(1 << PropLayer), QueryTriggerInteraction.Ignore))
+			bool ground = Physics.Raycast(rayPos, Vector3.down, out hit, 1000f, ~(1 << PropLayer), QueryTriggerInteraction.Ignore);
+			if (ground)
 			{
 				alt = hit.point.y;
 				n = hit.normal;
@@ -91,7 +92,10 @@ public class ObjectPlacer : MonoBehaviour
 
 			pos = new Vector3(rayPos.x, alt, rayPos.z);
 			groundNormal = n;
-			placed = variants == null || roll < Acceptance(variants, terrain, pos);
+			//Nothing under this spot (the map area is larger than the terrain):
+			//these used to go in at y = 0 anyway, and people stood 7-8 m up in
+			//the air along the edge of the farm.
+			placed = ground && (variants == null || roll < Acceptance(variants, terrain, pos));
 		}
 		if(!placed) return;
 

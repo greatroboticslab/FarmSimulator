@@ -76,6 +76,7 @@ public class PlantZone : MonoBehaviour
 
 			if(PathMaker.Instance.plotHuman != null) {
 	            GameObject newHuman = Instantiate(PathMaker.Instance.plotHuman);
+			    newHuman.transform.SetParent(PathMaker.Instance.FarmContents, false);
 			    newHuman.transform.position = h_hit.point;
 				//a bystander standing in a field does not need its skeleton
 				//evaluated while it is off screen

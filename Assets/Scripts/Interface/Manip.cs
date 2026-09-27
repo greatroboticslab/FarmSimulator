@@ -304,6 +304,7 @@ public class Manip : MonoBehaviour
 									int tractionIndex = PathMaker.Instance.roverControls.tractionDropdown.value;
 									if(PathMaker.Instance.tractionSpots != null && tractionIndex >= 0 && tractionIndex < PathMaker.Instance.tractionSpots.Count && PathMaker.Instance.tractionSpots[tractionIndex] != null) {
 										GameObject newTractionSpot = Instantiate(PathMaker.Instance.tractionSpots[tractionIndex]);
+										newTractionSpot.transform.SetParent(PathMaker.Instance.FarmContents, true);
 										newTractionSpot.transform.position = hit.point;
 									}
 								}
@@ -351,6 +352,7 @@ public class Manip : MonoBehaviour
                     if(PathMaker.Instance.singlePlace) {
                         if(!MouseInPanel()) {
                             GameObject newTractionSpot = Instantiate(PathMaker.Instance.selectedCrop);
+                            newTractionSpot.transform.SetParent(PathMaker.Instance.FarmContents, true);
                             newTractionSpot.transform.position = hit.point;
                         }
                     }

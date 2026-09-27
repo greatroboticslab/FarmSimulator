@@ -199,8 +199,32 @@ public class PathMaker : MonoBehaviour
 		}
 	}
 	
+	//Everything the player adds to a farm (plots with their plants and weeds, the
+	//bystanders the plots bring, traction patches, single crops) goes under this,
+	//so going back to the main menu can take it all away. They used to stay
+	//standing, and turned up again in the next farm loaded.
+	Transform farmContents;
+	public Transform FarmContents {
+		get {
+			if(farmContents == null) farmContents = new GameObject("FarmContents").transform;
+			return farmContents;
+		}
+	}
+
 	public void GoToMainMenu() {
-		
+
+		if(farmContents != null) {
+			Destroy(farmContents.gameObject);
+			farmContents = null;
+		}
+		if(waypoints != null) waypoints.Clear();
+		if(currentWayPointObj != null) {
+			Destroy(currentWayPointObj);
+			currentWayPointObj = null;
+		}
+		//set again when the next farm loads
+		loaded = false;
+
 		if(rover) {
 			Destroy(rover.gameObject);
 		}

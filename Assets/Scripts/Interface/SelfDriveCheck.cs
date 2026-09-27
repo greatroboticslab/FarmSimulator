@@ -127,6 +127,17 @@ public static class SelfDriveCheck
 		}
 		Debug.Log("[SelfDrive] plants: crops " + crops + " (mold reduced on " + moldDown + ", dead " + deadCrops + "), weeds " + weeds
 			+ " (dead " + deadWeeds + "), moisture readings " + readings);
+
+		//and Main Menu should take the farm's contents with it
+		int plantsBefore = UnityEngine.Object.FindObjectsOfType<Plant>(true).Length;
+		int plotsBefore = UnityEngine.Object.FindObjectsOfType<PlantZone>(true).Length;
+		pm.GoToMainMenu();
+		//Destroy lands at the end of the frame
+		yield return null;
+		yield return null;
+		Debug.Log("[SelfDrive] Main Menu: plants " + plantsBefore + " -> " + UnityEngine.Object.FindObjectsOfType<Plant>(true).Length
+			+ ", plots " + plotsBefore + " -> " + UnityEngine.Object.FindObjectsOfType<PlantZone>(true).Length
+			+ ", waypoints queued " + (pm.waypoints != null ? pm.waypoints.Count : 0) + ", marker " + (pm.currentWayPointObj != null ? "left" : "gone"));
 	}
 
 	static string FirstLine(string s)

@@ -41,6 +41,8 @@ public class PlotHelper : MonoBehaviour
 		size.y = Mathf.Max(size.y, 4f);
 		
 		GameObject newPlot = Instantiate(plantZone);
+		//cleared with the farm when the player goes back to the main menu
+		if(PathMaker.Instance != null) newPlot.transform.SetParent(PathMaker.Instance.FarmContents, true);
 		PlantZone plantZoneComponent = newPlot.GetComponent<PlantZone>();
 		Plant plantComponent = plant.GetComponent<Plant>();
 		if(plantZoneComponent == null || plantComponent == null) return;

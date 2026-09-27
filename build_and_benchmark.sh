@@ -77,9 +77,15 @@ fi
 
 echo "== measuring tiers: $TIERS"
 rm -f "$CSV"
+# Uncapped, like the editor benchmark: under the tiers' frame cap (60 fps
+# below High) or vsync (High and up) the GPU idles between frames and can
+# clock down, so the same work reads slower. Numbers before 2026-09-26 were
+# taken capped. The sky is fixed at Midday so the one a player left saved
+# does not change the scene. Close anything else using the GPU first: during
+# one run other programs held it at 28% utilization and every tier read high.
 for t in $TIERS; do
-	"$EXE" -benchmark -quality "$t" -benchmark-seconds "$SECONDS_PER_TIER" \
-		-benchmark-out "$CSV" -screen-fullscreen 0 -logFile "$LOGS/bench_q$t.log"
+	"$EXE" -benchmark -benchmark-uncapped -sky midday -quality "$t" -benchmark-seconds "$SECONDS_PER_TIER" \
+		-benchmark-out "$CSV" -screen-fullscreen 0 -logFile "$LOGS/bench_q$t.log" > /dev/null
 	grep -h "\[Benchmark\]" "$LOGS/bench_q$t.log" | tail -1
 done
 

@@ -791,7 +791,12 @@ public class DebugRover : MonoBehaviour
 		
 		
 		
-		charge -= (Time.deltaTime*powerUsage);
+		//powerUsage is in percent per second. It used to be scaled by deltaTime
+		//when built below and again here, so the battery drained at a rate that
+		//fell with the frame rate (2.4x slower at 144 fps than at 60). The rates
+		//below are the ones it had at 60 fps: 0.5/60 %/s at full throttle
+		//(about 3.3 h of driving) and 2.7/60 %/s with the light on (about 37 min).
+		charge = Mathf.Max(0f, charge - Time.deltaTime * powerUsage);
 		
 		vel = rb.velocity.magnitude;
         //float forwardF = Time.deltaTime * moveSpeed * Input.GetAxis("Vertical");
@@ -801,10 +806,9 @@ public class DebugRover : MonoBehaviour
 
 		heading = transform.eulerAngles.y;
 	
-		powerUsage = 0;
-		powerUsage += (Mathf.Abs(forwardInput) * Time.deltaTime * 0.5f);
+		powerUsage = Mathf.Abs(forwardInput) * (0.5f / 60f);
 		if(lightOn) {
-			powerUsage += Time.deltaTime * 2.7f;
+			powerUsage += 2.7f / 60f;
 		}
         
 		/*

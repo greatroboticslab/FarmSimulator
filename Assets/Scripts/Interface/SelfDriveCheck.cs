@@ -50,6 +50,7 @@ public static class SelfDriveCheck
 		Vector3 lastPos = rover.transform.position;
 		float moved = 0f;
 		float basketAtStart = rover.basket != null ? rover.basket.weight : 0f;
+		float chargeAtStart = rover.charge;
 
 		Debug.Log("[SelfDrive] start: robot " + rover.name + ", crop " + (pm.selectedCrop != null ? pm.selectedCrop.name : "none")
 			+ ", " + waypointsAtStart + " waypoints, arm " + (arm != null ? "yes" : "no"));
@@ -111,6 +112,8 @@ public static class SelfDriveCheck
 		controls.selfDriving.isOn = false;
 		Application.logMessageReceived -= count;
 		float basket = (rover.basket != null ? rover.basket.weight : 0f) - basketAtStart;
+		Debug.Log(string.Format(CultureInfo.InvariantCulture, "[SelfDrive] battery {0:0.00}% -> {1:0.00}% ({2:0.00} %/min)",
+			chargeAtStart, rover.charge, (chargeAtStart - rover.charge) * 60f / Mathf.Max(seconds, 1f)));
 		Debug.Log(string.Format(CultureInfo.InvariantCulture,
 			"[SelfDrive] {0:0} s: waypoints {1} of {2} left, plants visited {3}, pick cycles {4} (dropped in basket {5}, timed out {6}), nothing to pick {7}, basket {8:0.00} kg{9}, moved {10:0.0} m, exceptions {11}",
 			seconds, pm.waypoints != null ? pm.waypoints.Count : 0, waypointsAtStart, plantsVisited, starts, drops, timedOut, nothingToPick,

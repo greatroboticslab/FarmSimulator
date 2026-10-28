@@ -369,36 +369,37 @@ public class DebugRover : MonoBehaviour
 		
 	}
 	
+	//What the autopilot would do this step. It is worked out even while something
+	//else drives (a random detour recorded for training data, or a trained policy
+	//through FarmPolicyLink), because it is the "expert" label for that step.
+	public float expertForward, expertTurn;
+	public bool expertLight;
+	public float CurrentForward { get { return forwardInput; } }
+	public float CurrentTurn { get { return turnInput; } }
+
 	//This function is performed every frame if the rover is set to drive to waypoints of its own volition in the simulation.
+	//The autopilot always runs: waypoints keep advancing and a reached fruit plant
+	//starts the arm whoever drives. With netControlled the outside command then
+	//replaces the autopilot's, except while the arm is picking (the arm owns the
+	//robot then, as in normal self-driving).
 	private void SelfDriveUpdate_2() {
-		
+
+		ExpertDriveUpdate();
+		expertForward = forwardInput;
+		expertTurn = turnInput;
+		expertLight = lightOn;
+
 		if(netControlled) {
-			forwardInput = netForwardInput;
-			turnInput = netTurnInput;
-			
-			if(forwardInput > 1) {
-				forwardInput = 1;
-			}
-			if(forwardInput < -1) {
-				forwardInput = -1;
-			}
-			
-			if(turnInput > 1) {
-				turnInput = 1;
-			}
-			if(turnInput < -1) {
-				turnInput = -1;
-			}
-			
-			if(netLightInput >= 0.5f) {
-				lightOn = true;
-			}
-			else {
-				lightOn = false;
-			}
+			bool armBusy = robotArm != null && robotArm.harvesting;
+			forwardInput = armBusy ? 0f : Mathf.Clamp(netForwardInput, -1f, 1f);
+			turnInput = armBusy ? 0f : Mathf.Clamp(netTurnInput, -1f, 1f);
+			lightOn = netLightInput >= 0.5f;
 		}
-		else {
-			
+	}
+
+	private void ExpertDriveUpdate() {
+		{
+
 			forwardInput = 0;
 			turnInput = 0;
 			lightOn = false;
@@ -608,6 +609,22 @@ public class DebugRover : MonoBehaviour
 		}
 		return found;
 	}
+	//Moves the whole articulated robot (arm joints and all) to pos, facing yawDeg,
+	//at rest. Used by FarmDataGen to start each recorded episode somewhere new.
+	public void TeleportTo(Vector3 pos, float yawDeg)
+	{
+		transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yawDeg, 0f));
+		foreach (Rigidbody body in GetComponentsInChildren<Rigidbody>())
+		{
+			body.position = body.transform.position;
+			body.rotation = body.transform.rotation;
+			body.velocity = Vector3.zero;
+			body.angularVelocity = Vector3.zero;
+		}
+		blockTime = 0f;
+		timeSinceFlip = 0f;
+	}
+
 	private float timeSpawned = 0;
 	private bool placed = false;
 	

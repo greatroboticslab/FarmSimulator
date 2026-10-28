@@ -161,6 +161,16 @@ public bool harvesting;
 		closest = float.MaxValue;
 	}
 
+	//Drop whatever the arm was doing (FarmDataGen starts each episode with an idle arm)
+	public void ResetArm() {
+		harvesting = false;
+		stage = 0;
+		cutting = false;
+		currentCrop = null;
+		timeHarvesting = 0f;
+		currentSpot = AlignSpot;
+	}
+
 	//On to the plant's next fruit, or done with the plant
 	void NextFruitOrFinish() {
 		int next = NextFruit(currentCrop, currentFruit + 1);

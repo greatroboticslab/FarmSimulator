@@ -672,7 +672,30 @@ public class GraphicsSettings : MonoBehaviour
 	{
 		Debug.Log("[Benchmark] starting at quality " + QualitySettings.names[QualitySettings.GetQualityLevel()]);
 		showOverlay = true;
-		float deadline = Time.unscaledTime + 90f;
+		yield return EnterFarm(CommandLineValue("-benchmark-robot"), 90f);
+		if (!EnteredFarm)
+		{
+			Debug.LogError("[Benchmark] " + EnterFarmError);
+			WriteBenchmarkRow("FAILED: " + EnterFarmError, 0, 0, 0, 0, 0);
+			Quit();
+			yield break;
+		}
+		yield return PlantBenchmarkPlot();
+		yield return MeasureAndFinish();
+	}
+
+	//Set by EnterFarm: whether the farm is loaded with the rover placed, and why not
+	public static bool EnteredFarm;
+	public static string EnterFarmError;
+
+	//Showroom -> farm with a wheeled rover, unattended, the way a player would get
+	//there (pick a robot, pick the farm). wanted: part of a robot's name, or null
+	//for the first wheeled one. Shared by the benchmark and FarmDataGen.
+	public static IEnumerator EnterFarm(string wanted, float timeout)
+	{
+		EnteredFarm = false;
+		EnterFarmError = null;
+		float deadline = Time.unscaledTime + timeout;
 
 		//showroom: pick the first wheeled rover
 		while (PathMaker.Instance == null && Time.unscaledTime < deadline) yield return null;
@@ -688,9 +711,8 @@ public class GraphicsSettings : MonoBehaviour
 			bool wheeled = ri.robot.GetComponent<DebugRover>() != null;
 			if (choice == null || (wheeled && choice.robot.GetComponent<DebugRover>() == null)) choice = ri;
 		}
-		//-benchmark-robot <name>: a particular rover (matched against the showroom
-		//object's name or its prefab's) instead of the first one
-		string wanted = CommandLineValue("-benchmark-robot");
+		//a particular rover (matched against the showroom object's name or its
+		//prefab's) instead of the first one
 		if (!string.IsNullOrEmpty(wanted))
 		{
 			foreach (RobotInfo ri in infos)
@@ -698,13 +720,11 @@ public class GraphicsSettings : MonoBehaviour
 				if (ri.humanoid || ri.training || ri.robot == null || ri.robot.GetComponent<DebugRover>() == null) continue;
 				if (ri.name.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0 || ri.robot.name.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0) { choice = ri; break; }
 			}
-			Debug.Log("[Benchmark] robot " + (choice != null ? choice.robot.name : "none") + " for -benchmark-robot " + wanted);
+			Debug.Log("[EnterFarm] robot " + (choice != null ? choice.robot.name : "none") + " for " + wanted);
 		}
 		if (choice == null || PathMaker.Instance == null)
 		{
-			Debug.LogError("[Benchmark] no rover selectable in the showroom");
-			WriteBenchmarkRow("FAILED: no rover", 0, 0, 0, 0, 0);
-			Quit();
+			EnterFarmError = "no rover";
 			yield break;
 		}
 
@@ -725,9 +745,7 @@ public class GraphicsSettings : MonoBehaviour
 		CoordSelector coords = UnityEngine.Object.FindObjectOfType<CoordSelector>(true);
 		if (coords == null)
 		{
-			Debug.LogError("[Benchmark] no CoordSelector in scene");
-			WriteBenchmarkRow("FAILED: no coord menu", 0, 0, 0, 0, 0);
-			Quit();
+			EnterFarmError = "no coord menu";
 			yield break;
 		}
 		TutorialBook.SuppressFirstTime();
@@ -738,41 +756,68 @@ public class GraphicsSettings : MonoBehaviour
 		ObjectPlacer placer = UnityEngine.Object.FindObjectOfType<ObjectPlacer>();
 		while (placer != null && !placer.finished && Time.unscaledTime < deadline) yield return null;
 		yield return new WaitForSecondsRealtime(3f);
-
-		//plot: a 20x20 m field just ahead of the rover
-		if (PathMaker.Instance.rover != null && PathMaker.Instance.manip != null && PathMaker.Instance.manip.plotHelperPrefab != null)
+		if (PathMaker.Instance.rover == null)
 		{
-			GameObject crop = PathMaker.Instance.selectedCrop;
-			//-benchmark-crop <name>: plant a particular crop instead of the first
-			if (!string.IsNullOrEmpty(benchmarkCrop) && PathMaker.Instance.cropList != null)
-				foreach (GameObject c in PathMaker.Instance.cropList)
-					if (c != null && c.name.IndexOf(benchmarkCrop, StringComparison.OrdinalIgnoreCase) >= 0) { crop = c; break; }
-			if (crop == null && PathMaker.Instance.cropList != null && PathMaker.Instance.cropList.Count > 0) crop = PathMaker.Instance.cropList[0];
-			if (crop != null)
-			{
-				PathMaker.Instance.selectedCrop = crop;
-				//densities are normally copied out of the plot panel's sliders, and
-				//that panel never opens in an unattended run; without this the zone
-				//plants nothing and the benchmark measures an empty field
-				if (PathMaker.Instance.xDensity <= 0f) PathMaker.Instance.xDensity = 1.4f;
-				if (PathMaker.Instance.yDensity <= 0f) PathMaker.Instance.yDensity = 0.55f;
-				if (PathMaker.Instance.weedDensity <= 0f) PathMaker.Instance.weedDensity = 0.12f;
-				Transform rover = PathMaker.Instance.rover.transform;
-				GameObject helperGo = UnityEngine.Object.Instantiate(PathMaker.Instance.manip.plotHelperPrefab);
-				PlotHelper helper = helperGo.GetComponent<PlotHelper>();
-				if (helper != null)
-				{
-					helper.plant = crop;
-					helper.weedDensity = PathMaker.Instance.weedDensity;
-					helper.size = new Vector2(10f, 10f);
-					Vector3 flat = rover.forward; flat.y = 0f; flat.Normalize();
-					helperGo.transform.position = new Vector3(rover.position.x, 500f, rover.position.z) + flat * 16f;
-					helper.PlacePlot();
-				}
-				UnityEngine.Object.Destroy(helperGo);
-			}
+			EnterFarmError = "the rover never spawned";
+			yield break;
 		}
+		EnteredFarm = true;
+	}
+
+	//Finds a crop prefab by part of its name (null or no match: the selected crop, else the first)
+	public static GameObject FindCrop(string name)
+	{
+		PathMaker pm = PathMaker.Instance;
+		if (pm == null) return null;
+		if (!string.IsNullOrEmpty(name) && pm.cropList != null)
+			foreach (GameObject c in pm.cropList)
+				if (c != null && c.name.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0) return c;
+		if (pm.selectedCrop != null) return pm.selectedCrop;
+		return pm.cropList != null && pm.cropList.Count > 0 ? pm.cropList[0] : null;
+	}
+
+	//Plants a size.x by size.y plot of crop centred at (centre.x, centre.z), the way
+	//a player's drag does, with its plants, weeds and the robot's waypoints.
+	public static bool PlacePlot(GameObject crop, Vector3 centre, Vector2 size, float weedDensity)
+	{
+		PathMaker pm = PathMaker.Instance;
+		if (pm == null || crop == null || pm.manip == null || pm.manip.plotHelperPrefab == null) return false;
+		pm.selectedCrop = crop;
+		//densities are normally copied out of the plot panel's sliders, and
+		//that panel never opens in an unattended run; without this the zone
+		//plants nothing
+		if (pm.xDensity <= 0f) pm.xDensity = 1.4f;
+		if (pm.yDensity <= 0f) pm.yDensity = 0.55f;
+		pm.weedDensity = weedDensity;
+		GameObject helperGo = UnityEngine.Object.Instantiate(pm.manip.plotHelperPrefab);
+		PlotHelper helper = helperGo.GetComponent<PlotHelper>();
+		bool ok = helper != null;
+		if (ok)
+		{
+			helper.plant = crop;
+			helper.weedDensity = weedDensity;
+			helper.size = size;
+			helperGo.transform.position = new Vector3(centre.x, 500f, centre.z);
+			helper.PlacePlot();
+		}
+		UnityEngine.Object.Destroy(helperGo);
+		return ok;
+	}
+
+	//plot: a 10x10 m field just ahead of the rover
+	IEnumerator PlantBenchmarkPlot()
+	{
+		PathMaker pm = PathMaker.Instance;
+		GameObject crop = FindCrop(benchmarkCrop);
+		if (pm.weedDensity <= 0f) pm.weedDensity = 0.12f;
+		Transform rover = pm.rover.transform;
+		Vector3 flat = rover.forward; flat.y = 0f; flat.Normalize();
+		PlacePlot(crop, rover.position + flat * 16f, new Vector2(10f, 10f), pm.weedDensity);
 		yield return new WaitForSecondsRealtime(4f);
+	}
+
+	IEnumerator MeasureAndFinish()
+	{
 
 		//a picture of what was measured, next to the CSV
 		string shotDir = string.IsNullOrEmpty(benchmarkOut) ? Application.persistentDataPath : Path.GetDirectoryName(Path.GetFullPath(benchmarkOut));

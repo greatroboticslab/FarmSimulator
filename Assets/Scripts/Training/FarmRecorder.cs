@@ -182,7 +182,14 @@ public class FarmRecorder : MonoBehaviour
 	{
 		//camera frame
 		RenderTexture keep = RenderTexture.active;
+		//the yellow marker over the next route point is drawn for people watching;
+		//the robot's camera does not see it (the policy gets the route point as
+		//numbers, not painted onto the ground)
+		GameObject marker = PathMaker.Instance != null ? PathMaker.Instance.currentWayPointObj : null;
+		bool markerShown = marker != null && marker.activeSelf;
+		if (markerShown) marker.SetActive(false);
 		cam.Render();
+		if (markerShown) marker.SetActive(true);
 		RenderTexture.active = rt;
 		tex.ReadPixels(new Rect(0, 0, size, size), 0, 0, false);
 		RenderTexture.active = keep;

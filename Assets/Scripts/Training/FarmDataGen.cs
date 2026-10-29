@@ -337,6 +337,48 @@ public class FarmDataGen : MonoBehaviour
 				hasGround ? (b.min.y - ground).ToString("+0.00;-0.00", CultureInfo.InvariantCulture) + " m from" : "no", mats));
 		}
 		Debug.Log("[FarmDataGen] figures: " + n);
+
+		//and anything person-sized that is not animated: a static model 1.3-2.4 m
+		//tall and under 1.3 m across, within 150 m of the robot, grouped by its
+		//top-level object under the scene
+		Dictionary<Transform, Bounds> groups = new Dictionary<Transform, Bounds>();
+		foreach (Renderer r in FindObjectsOfType<Renderer>())
+		{
+			if (r is ParticleSystemRenderer || r is LineRenderer || r is TrailRenderer) continue;
+			if (r.transform.IsChildOf(rover.transform)) continue;
+			if ((r.bounds.center - rover.transform.position).sqrMagnitude > 150f * 150f) continue;
+			Transform key = r.transform;
+			//group a model's parts: climb while the parent is still person-sized
+			while (key.parent != null && key.parent.GetComponent<PlantZone>() == null && key.parent.name != "FarmContents")
+			{
+				Renderer[] up = key.parent.GetComponentsInChildren<Renderer>();
+				Bounds ub = up[0].bounds;
+				foreach (Renderer u in up) ub.Encapsulate(u.bounds);
+				if (ub.size.y > 2.6f || Mathf.Max(ub.size.x, ub.size.z) > 1.6f) break;
+				key = key.parent;
+			}
+			Bounds b;
+			if (groups.TryGetValue(key, out b)) { b.Encapsulate(r.bounds); groups[key] = b; }
+			else groups[key] = r.bounds;
+		}
+		int sized = 0;
+		foreach (KeyValuePair<Transform, Bounds> kv in groups)
+		{
+			Bounds b = kv.Value;
+			if (b.size.y < 1.3f || b.size.y > 2.4f || Mathf.Max(b.size.x, b.size.z) > 1.3f) continue;
+			if (kv.Key.GetComponentInParent<Plant>() != null) continue;
+			string mats = "";
+			foreach (Renderer r in kv.Key.GetComponentsInChildren<Renderer>())
+				foreach (Material mt in r.sharedMaterials)
+					if (mt != null && mats.Length < 80) mats += mt.name.Replace(" (Instance)", "") + " ";
+			string path = kv.Key.name;
+			for (Transform p = kv.Key.parent; p != null; p = p.parent) path = p.name + "/" + path;
+			if (sized++ < 40)
+				Debug.Log(string.Format(CultureInfo.InvariantCulture,
+					"[FarmDataGen] person-sized {0}: {1} at ({2:0.0}, {3:0.0}, {4:0.0}), {5:0} m from robot, {6:0.00} x {7:0.00} x {8:0.00} m, materials {9}",
+					sized, path, b.center.x, b.min.y, b.center.z, Vector3.Distance(b.center, rover.transform.position), b.size.x, b.size.y, b.size.z, mats));
+		}
+		Debug.Log("[FarmDataGen] person-sized static objects within 150 m: " + sized);
 	}
 
 	IEnumerator LogPhysicsLater(float s)

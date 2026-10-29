@@ -10,7 +10,7 @@ public class PropEntry {
 
 }
 
-//Scatters decorative props (trees, rocks, people) over the loaded farm.
+//Scatters decorative props (trees and rocks; no people, see Populate) over the loaded farm.
 //The prop count follows the graphics tier, animated people are capped,
 //spawning is spread across frames so the farm does not freeze while it
 //fills in, and off-screen people stop animating. A prop entry carrying
@@ -223,7 +223,11 @@ public class ObjectPlacer : MonoBehaviour
 
 		//graphics tier decides how much decoration this machine can afford
 		float fraction = GraphicsSettings.PropFraction();
-		animatedBudget = GraphicsSettings.AnimatedPropBudget();
+		//No people on the farm. The scattered bystanders (a doctor in a white coat
+		//and three others) landed at random, some partly in the ground on slopes,
+		//and walked into recorded training video; they are left out. Trees and rocks
+		//are unchanged and stay where they were (each prop has its own seed).
+		animatedBudget = 0;
 		int total = Mathf.RoundToInt(propAmount * fraction);
 		Debug.Log("[ObjectPlacer] placing " + total + " of " + propAmount + " props (animated cap " + animatedBudget + ") at quality " + QualitySettings.names[QualitySettings.GetQualityLevel()]);
 

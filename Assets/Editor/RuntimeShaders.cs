@@ -3,7 +3,7 @@ using UnityEditor;
 
 //Shaders that scripts look up by name at runtime are not part of any scene
 //or prefab, so the player build strips them unless the project lists them
-//as always included. Without this the laser beam (CropDetector) and the
+//as always included. Without this the crop laser (since removed) and the
 //showroom rings (RobotShowcase) threw in every build and never showed.
 public static class RuntimeShaders
 {

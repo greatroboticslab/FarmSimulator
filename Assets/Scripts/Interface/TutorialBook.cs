@@ -51,14 +51,11 @@ public class TutorialBook : MonoBehaviour
 			"The robot understands and acts: start farming engages self-driving along the crop rows.\n\n" +
 			"(Chat needs a free Groq API key in StreamingAssets/config.json; see SETUP_AND_RUN.md in the project.)"),
 
-		new Page("Self-Driving and Lasers",
+		new Page("Self-Driving",
 			"Tick Self Driving (top right) or tell the chat to start farming.\n\n" +
 			"The robot drives the planted rows waypoint by waypoint and works as it goes. " +
 			"The line at the top follows along: the stop it is on, the fruit it is picking and " +
-			"how far along, the soil reading it just took, and when the rows are done.\n\n" +
-			"Every rover carries a crop detector: it scans nearby plants, tells crops from weeds, " +
-			"and locks a visible laser onto its current target. Red beam means a normal rover; " +
-			"the UV robot lases violet."),
+			"how far along, the soil reading it just took, and when the rows are done."),
 
 		new Page("The Right-Side Panel",
 			"Self Driving - the robot works the planted rows on its own\n" +

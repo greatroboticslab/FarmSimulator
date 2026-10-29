@@ -159,6 +159,7 @@ public class FarmDataGen : MonoBehaviour
 			for (int k = 0; k < 20; k++) yield return new WaitForFixedUpdate(); //settle on the wheels
 			LogPhysics("after settling");
 			StartCoroutine(LogPhysicsLater(3f));
+			if (ep == 0) FigureCensus();
 
 			List<Plant> plot = new List<Plant>();
 			int fruitAtStart = 0;
@@ -299,6 +300,43 @@ public class FarmDataGen : MonoBehaviour
 			if (rc.selfDriving != null) { rc.selfDriving.isOn = on; n++; }
 		rover.selfDriving = on;
 		if (on) Debug.Log("[FarmDataGen] Self Driving on (" + n + " checkbox(es))");
+	}
+
+	//Every human-shaped thing in the scene (anything with an Animator or a skinned
+	//mesh), where it is, how far its lowest point is from the ground under it, and
+	//what it is made of: to find stray figures (one showed up half in the ground)
+	void FigureCensus()
+	{
+		HashSet<Transform> roots = new HashSet<Transform>();
+		foreach (Animator a in FindObjectsOfType<Animator>()) roots.Add(a.transform);
+		foreach (SkinnedMeshRenderer smr in FindObjectsOfType<SkinnedMeshRenderer>())
+		{
+			Animator a = smr.GetComponentInParent<Animator>();
+			roots.Add(a != null ? a.transform : smr.transform.root);
+		}
+		int n = 0;
+		foreach (Transform t in roots)
+		{
+			if (t.IsChildOf(rover.transform)) continue;
+			Renderer[] rs = t.GetComponentsInChildren<Renderer>();
+			if (rs.Length == 0) continue;
+			Bounds b = rs[0].bounds;
+			foreach (Renderer r in rs) b.Encapsulate(r.bounds);
+			float ground;
+			bool hasGround = DebugRover.FindGroundHeight(b.center, t, out ground);
+			string mats = "";
+			foreach (Renderer r in rs)
+				foreach (Material m in r.sharedMaterials)
+					if (m != null && mats.Length < 80) mats += m.name.Replace(" (Instance)", "") + " ";
+			string path = t.name;
+			for (Transform p = t.parent; p != null; p = p.parent) path = p.name + "/" + path;
+			Debug.Log(string.Format(CultureInfo.InvariantCulture,
+				"[FarmDataGen] figure {0}: {1} active {2}, at ({3:0.0}, {4:0.0}, {5:0.0}), {6:0.0} m from robot, {7:0.00} m tall, lowest point {8} ground, materials {9}",
+				n++, path, t.gameObject.activeInHierarchy, b.center.x, b.min.y, b.center.z,
+				Vector3.Distance(b.center, rover.transform.position), b.size.y,
+				hasGround ? (b.min.y - ground).ToString("+0.00;-0.00", CultureInfo.InvariantCulture) + " m from" : "no", mats));
+		}
+		Debug.Log("[FarmDataGen] figures: " + n);
 	}
 
 	IEnumerator LogPhysicsLater(float s)

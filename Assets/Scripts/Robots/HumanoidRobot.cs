@@ -69,6 +69,9 @@ public class HumanoidRobot : MonoBehaviour
 	//outside driver (FarmDataGen), same idea as DebugRover.netControlled
 	[System.NonSerialized] public bool netControlled;
 	[System.NonSerialized] public float netForward, netTurn, expertForward, expertTurn;
+	//a policy turn command of +-1 turns at this share of turnSpeed (90 deg/s would swing 1.8 deg per 50 Hz decision,
+	//past the 1.2 deg aim a pick needs); the autopilot itself turns at about 10 deg/s near a plant
+	[System.NonSerialized] public float netTurnScale = 1f / 3f;
 	public bool gotWaypoint;
 	public bool wantsToTeleport;
 	public float heading;
@@ -1551,7 +1554,7 @@ public class HumanoidRobot : MonoBehaviour
 				expertTurn = leftRight;
 				if(netControlled && !harvesting) {
 					forward = netForward;
-					leftRight = netTurn;
+					leftRight = netTurn * netTurnScale;
 				}
 			}
 

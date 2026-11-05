@@ -148,17 +148,23 @@ public class DebugRover : MonoBehaviour
 		
 		//layerMask = ~layerMask;
 		
-		if (Physics.Raycast(probe.position, transform.TransformDirection(probe.forward), out hit, 10, layerMask))
+		probeTests++;
+		//probe.forward is already a world direction (TransformDirection on it turned the ray by the robot's yaw twice)
+		if (Physics.Raycast(probe.position, probe.forward, out hit, 10, layerMask))
 		{
 			//anything else on the Plant layer (a fruit, say) has no reading
 			Plant p = hit.collider.GetComponentInParent<Plant>();
 			if(p != null) {
 				measuredWater = p.water;
-				Debug.Log(measuredWater);
+				measured.Add(p);
 			}
-			
+
 		}
 	}
+
+	//moisture readings that hit a plant, per plant (FarmDataGen clears these each episode)
+	[System.NonSerialized] public HashSet<Plant> measured = new HashSet<Plant>();
+	[System.NonSerialized] public int probeTests;
 	
 	//Returns a string of the current information about the rover, which is writtern to a frame .txt file
 	//If scienceQA is true, it will be output in the form of a series of sentences about the rovers information

@@ -30,12 +30,15 @@ using UnityEngine;
 //  -fw-size N          camera frame size in pixels (128)
 //  -fw-timescale K     simulated seconds per real second (1; data only, never with -policy)
 //  -fw-video DIR       also save a chase-camera view at 15 fps as JPGs (for a demo clip)
+//  -fw-weeds LO,HI     weed density range per plot (0.03,0.2)
+//  -fw-robot UVRobot / Moisture / Humanoid: weed control, soil moisture, walking harvester
 public class FarmDataGen : MonoBehaviour
 {
 	string outDir, policyAddr, videoDir, robotName = "Cutter";
 	int episodes = 20, seed = 1, size = 128;
 	float seconds = 90f, perturb = -1f, hz = 10f, timeScale = 1f;
 	bool noTeleport; //-fw-no-teleport: the first episode starts where the robot spawned (a diagnostic)
+	float weedLo = 0.03f, weedHi = 0.2f; //-fw-weeds lo,hi: weed density range per plot
 	string[] crops = { "pepper", "tomato" };
 
 	System.Random rng;
@@ -79,6 +82,12 @@ public class FarmDataGen : MonoBehaviour
 			else if (k == "-fw-perturb") perturb = F(v, perturb);
 			else if (k == "-fw-hz") hz = F(v, hz);
 			else if (k == "-fw-timescale") timeScale = F(v, timeScale);
+			else if (k == "-fw-weeds")
+			{
+				string[] ab = v.Split(',');
+				weedLo = F(ab[0], weedLo);
+				weedHi = ab.Length > 1 ? F(ab[1], weedHi) : weedLo;
+			}
 		}
 		if (perturb < 0f) perturb = policyAddr != null ? 0f : 0.15f;
 		if (policyAddr != null) timeScale = 1f; //live means real time
@@ -106,6 +115,11 @@ public class FarmDataGen : MonoBehaviour
 			yield break;
 		}
 		PathMaker pm = PathMaker.Instance;
+		if (robotName.StartsWith("Hum", StringComparison.OrdinalIgnoreCase))
+		{
+			yield return RunHumanoid(pm);
+			yield break;
+		}
 		rover = pm.rover;
 		spawn = rover.transform.position;
 		rec = FarmRecorder.Attach(rover, size, hz);
@@ -130,7 +144,7 @@ public class FarmDataGen : MonoBehaviour
 			GameObject crop = GraphicsSettings.FindCrop(cropWord);
 			//PlotHelper.size is the half-width (at least 4 m): plots 8-11 m a side, 50-90 plants
 			Vector2 plotSize = new Vector2(R(4f, 5.5f), R(4f, 5.5f));
-			float weeds = R(0.03f, 0.2f);
+			float weeds = R(weedLo, weedHi);
 			Vector3 centre;
 			if (!FindFlatSpot(plotSize * 2f, out centre))
 			{
@@ -143,6 +157,9 @@ public class FarmDataGen : MonoBehaviour
 				sky = rng.Next(SkyPresets.Instance.presets.Length);
 				SkyPresets.Instance.Apply(sky);
 			}
+			//the UV robot is too wide for the default 1.8 m between rows (it wedged
+			//between the plants on both sides): give weed plots 2.6 m rows
+			pm.yDensity = TaskKind == "weeds" ? 0.38f : 0.55f;
 			GraphicsSettings.PlacePlot(crop, centre, plotSize, weeds);
 			yield return new WaitForSecondsRealtime(0.5f); //plants find their fruit in Start
 
@@ -161,11 +178,17 @@ public class FarmDataGen : MonoBehaviour
 			StartCoroutine(LogPhysicsLater(3f));
 			if (ep == 0) FigureCensus();
 
-			List<Plant> plot = new List<Plant>();
+			List<Plant> plot = new List<Plant>(), weedList = new List<Plant>();
 			int fruitAtStart = 0;
 			foreach (Plant p in Plant.All)
+			{
 				if (p != null && p.desired) { plot.Add(p); fruitAtStart += FarmRecorder.LiveFruit(p); }
+				else if (p != null) weedList.Add(p);
+			}
 			int waypointsAtStart = pm.waypoints != null ? pm.waypoints.Count : 0;
+			rover.measured.Clear();
+			rover.probeTests = 0;
+			float lightSeconds = 0f;
 
 			string task = TaskSentence(cropWord);
 			string dir = outDir != null ? Path.Combine(outDir, "ep_" + (policyAddr != null ? "policy_" : "") + seed.ToString("000") + "_" + ep.ToString("0000")) : null;
@@ -175,7 +198,8 @@ public class FarmDataGen : MonoBehaviour
 				+ "],\"weed_density\":" + Num(weeds) + ",\"sky\":" + sky + ",\"quality\":\"" + QualitySettings.names[QualitySettings.GetQualityLevel()]
 				+ "\",\"start\":[" + Num(startPos.x) + "," + Num(startPos.z) + "," + Num(yaw) + "],\"fruit_at_start\":" + fruitAtStart
 				+ ",\"plants\":" + plot.Count + ",\"waypoints\":" + waypointsAtStart + ",\"perturb\":" + Num(perturb)
-				+ ",\"policy\":" + (policyAddr != null ? "true" : "false") + ",\"columns\":\"" + FarmRecorder.Header + "\"}";
+				+ ",\"policy\":" + (policyAddr != null ? "true" : "false") + ",\"task_kind\":\"" + TaskKind + "\",\"weeds\":" + weedList.Count
+				+ ",\"columns\":\"" + FarmRecorder.Header + "\"}";
 			if (link != null) link.BeginEpisode(startJson);
 			if (video != null) video.Begin("ep" + ep.ToString("000"));
 
@@ -191,6 +215,7 @@ public class FarmDataGen : MonoBehaviour
 			while (Time.time - t0 < seconds)
 			{
 				yield return null;
+				if (rover.lightOn) lightSeconds += Time.deltaTime;
 				if (Time.time - lastCheck >= 1f)
 				{
 					float d = Vector3.Distance(rover.transform.position, lastPos);
@@ -199,9 +224,15 @@ public class FarmDataGen : MonoBehaviour
 					stillFor = d < 0.05f && !busy ? stillFor + (Time.time - lastCheck) : 0f;
 					lastPos = rover.transform.position;
 					lastCheck = Time.time;
-					int live = 0;
-					foreach (Plant p in plot) if (p != null) live += FarmRecorder.LiveFruit(p);
-					rec.picked = fruitAtStart - live;
+					//progress, logged in the "picked" column: fruit picked, weeds killed, or plants measured
+					if (TaskKind == "weeds") rec.picked = Killed(weedList);
+					else if (TaskKind == "moisture") rec.picked = Measured(plot);
+					else
+					{
+						int live = 0;
+						foreach (Plant p in plot) if (p != null) live += FarmRecorder.LiveFruit(p);
+						rec.picked = fruitAtStart - live;
+					}
 				}
 				bool idleArm = rover.robotArm == null || !rover.robotArm.harvesting;
 				if (rover.currentWaypoint == null && (pm.waypoints == null || pm.waypoints.Count == 0) && idleArm) { end = "done"; break; }
@@ -221,7 +252,10 @@ public class FarmDataGen : MonoBehaviour
 			int left = pm.waypoints != null ? pm.waypoints.Count : 0;
 			string result = "{\"end\":\"" + end + "\",\"steps\":" + steps + ",\"sim_seconds\":" + Num(Time.time - t0)
 				+ ",\"fruit_picked\":" + (fruitAtStart - liveEnd) + ",\"basket_kg\":" + Num(rover.basket != null ? rover.basket.weight : 0f)
-				+ ",\"waypoints_done\":" + (waypointsAtStart - left) + ",\"moved_m\":" + Num(moved) + "}";
+				+ ",\"waypoints_done\":" + (waypointsAtStart - left) + ",\"moved_m\":" + Num(moved)
+				+ ",\"weeds\":" + weedList.Count + ",\"weeds_killed\":" + Killed(weedList) + ",\"crops_killed\":" + Killed(plot)
+				+ ",\"crops_damaged\":" + Damaged(plot) + ",\"light_seconds\":" + Num(lightSeconds)
+				+ ",\"plants\":" + plot.Count + ",\"plants_measured\":" + Measured(plot) + ",\"probe_tests\":" + rover.probeTests + "}";
 			if (dir != null)
 				File.WriteAllText(Path.Combine(dir, "meta.json"), startJson.Substring(0, startJson.Length - 1) + ",\"result\":" + result + "}");
 			if (link != null) link.EndEpisode(result);
@@ -231,6 +265,207 @@ public class FarmDataGen : MonoBehaviour
 		Debug.Log("[FarmDataGen] finished " + done + " episodes");
 		if (link != null) link.Dispose();
 		Application.Quit(0);
+	}
+
+	//The humanoid instead of a wheeled rover (-fw-robot Humanoid...). It walks by
+	//animation (kinematic, no wheels): forward and turn move it directly. Same
+	//episodes and files as the rover; its hands are the "arm" (busy while picking).
+	HumanoidRobot human;
+	IEnumerator RunHumanoid(PathMaker pm)
+	{
+		human = pm.humanoidRobot;
+		spawn = human.transform.position;
+		rec = FarmRecorder.Attach(human, size, hz);
+		rec.decide = DecideHuman;
+		if (policyAddr != null)
+		{
+			link = new FarmPolicyLink(policyAddr);
+			if (!link.Connect(60f)) { Application.Quit(3); yield break; }
+		}
+		if (outDir != null) Directory.CreateDirectory(outDir);
+		ChaseVideo video = videoDir != null ? ChaseVideo.Attach(human.transform, videoDir) : null;
+		Debug.Log("[FarmDataGen] humanoid " + human.name + ", walk " + human.walkSpeed + " m/s, turn " + human.turnSpeed + " deg/s, basket rover " + (human.basketRover != null));
+
+		int done = 0;
+		for (int ep = 0; ep < episodes; ep++)
+		{
+			Time.timeScale = 1f;
+			human.netControlled = false;
+			SetSelfDriving(false);
+			human.harvesting = false;
+			yield return ClearField(pm);
+
+			string cropWord = crops[rng.Next(crops.Length)].Trim();
+			GameObject crop = GraphicsSettings.FindCrop(cropWord);
+			Vector2 plotSize = new Vector2(R(4f, 5.5f), R(4f, 5.5f));
+			float weeds = R(weedLo, weedHi);
+			Vector3 centre;
+			if (!FindFlatSpot(plotSize * 2f, out centre))
+			{
+				Debug.LogWarning("[FarmDataGen] episode " + ep + ": no flat open ground found; skipping");
+				continue;
+			}
+			int sky = 0;
+			if (SkyPresets.Instance != null && SkyPresets.Instance.presets.Length > 0)
+			{
+				sky = rng.Next(SkyPresets.Instance.presets.Length);
+				SkyPresets.Instance.Apply(sky);
+			}
+			GraphicsSettings.PlacePlot(crop, centre, plotSize, weeds);
+			yield return new WaitForSecondsRealtime(1f); //plants find their fruit; the humanoid does its own jump to the plot
+			human.wantsToTeleport = false;
+
+			Vector3 startPos; float yaw;
+			StartPose(centre, plotSize, out startPos, out yaw);
+			PlaceHuman(pm, startPos, yaw);
+			for (int k = 0; k < 10; k++) yield return new WaitForFixedUpdate();
+
+			List<Plant> plot = new List<Plant>();
+			int fruitAtStart = 0, weedCount = 0;
+			foreach (Plant p in Plant.All)
+			{
+				if (p != null && p.desired) { plot.Add(p); fruitAtStart += FarmRecorder.LiveFruit(p); }
+				else if (p != null) weedCount++;
+			}
+			int waypointsAtStart = pm.waypoints != null ? pm.waypoints.Count : 0;
+
+			string task = TaskSentence(cropWord);
+			string dir = outDir != null ? Path.Combine(outDir, "ep_" + (policyAddr != null ? "policy_" : "") + seed.ToString("000") + "_" + ep.ToString("0000")) : null;
+			string startJson = "{\"episode\":" + ep + ",\"seed\":" + seed + ",\"task\":\"" + task + "\",\"crop\":\"" + Esc(crop != null ? crop.name : cropWord)
+				+ "\",\"robot\":\"" + Esc(human.name.Replace("(Clone)", "")) + "\",\"hz\":" + Num(hz) + ",\"size\":" + size
+				+ ",\"plot_centre\":[" + Num(centre.x) + "," + Num(centre.y) + "," + Num(centre.z) + "],\"plot_size\":[" + Num(plotSize.x) + "," + Num(plotSize.y)
+				+ "],\"weed_density\":" + Num(weeds) + ",\"sky\":" + sky + ",\"quality\":\"" + QualitySettings.names[QualitySettings.GetQualityLevel()]
+				+ "\",\"start\":[" + Num(startPos.x) + "," + Num(startPos.z) + "," + Num(yaw) + "],\"fruit_at_start\":" + fruitAtStart
+				+ ",\"plants\":" + plot.Count + ",\"waypoints\":" + waypointsAtStart + ",\"perturb\":" + Num(perturb)
+				+ ",\"policy\":" + (policyAddr != null ? "true" : "false") + ",\"task_kind\":\"harvest\",\"humanoid\":true,\"weeds\":" + weedCount
+				+ ",\"columns\":\"" + FarmRecorder.Header + "\"}";
+			if (link != null) link.BeginEpisode(startJson);
+			if (video != null) video.Begin("ep" + ep.ToString("000"));
+
+			rec.Begin(dir);
+			SetSelfDriving(true);
+			human.playerControlled = true;
+			Time.timeScale = timeScale;
+
+			float t0 = Time.time, lastCheck = Time.time;
+			Vector3 lastPos = human.transform.position;
+			float moved = 0f, stillFor = 0f;
+			int falls = 0;
+			bool wasFalling = false;
+			string end = "time";
+			while (Time.time - t0 < seconds)
+			{
+				yield return null;
+				if (human.falling && !wasFalling) falls++;
+				wasFalling = human.falling;
+				if (Time.time - lastCheck >= 1f)
+				{
+					float d = Vector3.Distance(human.transform.position, lastPos);
+					moved += d;
+					stillFor = d < 0.05f && !human.harvesting ? stillFor + (Time.time - lastCheck) : 0f;
+					lastPos = human.transform.position;
+					lastCheck = Time.time;
+					int live = 0;
+					foreach (Plant p in plot) if (p != null) live += FarmRecorder.LiveFruit(p);
+					rec.picked = fruitAtStart - live;
+				}
+				if (human.currentWaypoint == null && (pm.waypoints == null || pm.waypoints.Count == 0) && !human.harvesting) { end = "done"; break; }
+				if (stillFor > 20f) { end = "stuck"; break; }
+				if (link != null && link.Failed) { end = "link lost"; break; }
+			}
+			Time.timeScale = 1f;
+			human.netControlled = false;
+			SetSelfDriving(false);
+			int steps = rec.Step;
+			rec.End();
+			if (video != null) video.End();
+
+			int liveEnd = 0;
+			foreach (Plant p in plot) if (p != null) liveEnd += FarmRecorder.LiveFruit(p);
+			int left = pm.waypoints != null ? pm.waypoints.Count : 0;
+			string result = "{\"end\":\"" + end + "\",\"steps\":" + steps + ",\"sim_seconds\":" + Num(Time.time - t0)
+				+ ",\"fruit_picked\":" + (fruitAtStart - liveEnd) + ",\"basket_kg\":0"
+				+ ",\"waypoints_done\":" + (waypointsAtStart - left) + ",\"moved_m\":" + Num(moved) + ",\"falls\":" + falls
+				+ ",\"plants\":" + plot.Count + ",\"weeds\":" + weedCount + "}";
+			if (dir != null)
+				File.WriteAllText(Path.Combine(dir, "meta.json"), startJson.Substring(0, startJson.Length - 1) + ",\"result\":" + result + "}");
+			if (link != null) link.EndEpisode(result);
+			Debug.Log("[FarmDataGen] episode " + ep + " " + task + " (humanoid): " + result);
+			done++;
+		}
+		Debug.Log("[FarmDataGen] finished " + done + " episodes");
+		if (link != null) link.Dispose();
+		Application.Quit(0);
+	}
+
+	//Stand the humanoid on the ground at pos facing yaw, its basket rover beside it
+	void PlaceHuman(PathMaker pm, Vector3 pos, float yaw)
+	{
+		float ground;
+		if (!DebugRover.FindGroundHeight(pos, human.transform, out ground)) ground = pos.y - 0.8f;
+		human.transform.position = new Vector3(pos.x, ground + human.standHeight, pos.z);
+		human.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+		FollowerRover basket = human.basketRover != null ? human.basketRover : pm.basketRover;
+		if (basket != null && basket.rb != null)
+		{
+			basket.rb.isKinematic = true;
+			basket.transform.position = human.transform.position - human.transform.forward * 2.5f + human.transform.right * 1.5f + Vector3.up * 0.3f;
+			basket.transform.rotation = human.transform.rotation;
+			basket.rb.velocity = Vector3.zero;
+			basket.rb.isKinematic = false;
+		}
+	}
+
+	//Who walks the humanoid for the coming interval (same rules as Decide for the rover)
+	void DecideHuman(byte[] frame, float[] row)
+	{
+		bool busy = row[FarmRecorder.colArmBusy] > 0.5f;
+		rec.policyMs = 0f;
+		if (link != null && !link.Failed)
+		{
+			float f, t, l;
+			float start = Time.realtimeSinceStartup;
+			if (link.Decide(rec.Step, row, frame, out f, out t, out l))
+			{
+				rec.policyMs = (Time.realtimeSinceStartup - start) * 1000f;
+				human.netControlled = true;
+				human.netForward = f;
+				human.netTurn = t;
+				rec.source = FarmRecorder.SourcePolicy;
+				rec.execForward = busy ? 0f : f;
+				rec.execTurn = busy ? 0f : t;
+				rec.execLight = false;
+				return;
+			}
+			human.netControlled = false;
+		}
+		if (detourLeft == 0 && !busy && perturb > 0f && rng.NextDouble() < perturb / (10f * (1f - perturb)))
+		{
+			detourLeft = rng.Next(5, 16);
+			do
+			{
+				detourF = rng.Next(-1, 2);
+				detourT = rng.Next(-1, 2);
+			} while (detourF == 0f && detourT == 0f);
+		}
+		if (detourLeft > 0 && !busy)
+		{
+			detourLeft--;
+			human.netControlled = true;
+			human.netForward = detourF;
+			human.netTurn = detourT;
+			rec.source = FarmRecorder.SourceRandom;
+			rec.execForward = detourF;
+			rec.execTurn = detourT;
+			rec.execLight = false;
+			return;
+		}
+		detourLeft = 0;
+		human.netControlled = false;
+		rec.source = FarmRecorder.SourceExpert;
+		rec.execForward = human.expertForward;
+		rec.execTurn = human.expertTurn;
+		rec.execLight = false;
 	}
 
 	//Called by FarmRecorder for every frame: who drives for the coming interval
@@ -298,7 +533,8 @@ public class FarmDataGen : MonoBehaviour
 		int n = 0;
 		foreach (RoverControls rc in FindObjectsOfType<RoverControls>(true))
 			if (rc.selfDriving != null) { rc.selfDriving.isOn = on; n++; }
-		rover.selfDriving = on;
+		if (rover != null) rover.selfDriving = on;
+		if (human != null) human.selfDriving = on;
 		if (on) Debug.Log("[FarmDataGen] Self Driving on (" + n + " checkbox(es))");
 	}
 
@@ -413,7 +649,8 @@ public class FarmDataGen : MonoBehaviour
 		for (int i = contents.childCount - 1; i >= 0; i--) Destroy(contents.GetChild(i).gameObject);
 		if (pm.waypoints != null) pm.waypoints.Clear();
 		if (pm.currentWayPointObj != null) Destroy(pm.currentWayPointObj);
-		rover.currentWaypoint = null;
+		if (rover != null) rover.currentWaypoint = null;
+		if (human != null) human.currentWaypoint = null;
 		yield return null;
 		yield return null;
 	}
@@ -456,7 +693,8 @@ public class FarmDataGen : MonoBehaviour
 	void StartPose(Vector3 centre, Vector2 half, out Vector3 pos, out float yaw)
 	{
 		PathMaker pm = PathMaker.Instance;
-		Vector2 anchor = rover.currentWaypoint != null ? rover.currentWaypoint.pos
+		PathMaker.Waypoint cw = rover != null ? rover.currentWaypoint : human != null ? human.currentWaypoint : null;
+		Vector2 anchor = cw != null ? cw.pos
 			: pm.waypoints != null && pm.waypoints.Count > 0 ? pm.waypoints[0].pos : new Vector2(centre.x, centre.z);
 		pos = spawn;
 		for (int attempt = 0; attempt < 60; attempt++)
@@ -477,12 +715,22 @@ public class FarmDataGen : MonoBehaviour
 		yaw = R(0f, 360f);
 	}
 
+	//What the robot is for, from its type: 1 = UV light (weed control), 0 = soil moisture probe, 2 = harvester
+	string TaskKind { get { return rover == null ? "harvest" : rover.robotType == 1 ? "weeds" : rover.robotType == 0 ? "moisture" : "harvest"; } }
+
+	static int Killed(List<Plant> ps) { int n = 0; foreach (Plant p in ps) if (p != null && p.health <= 0f) n++; return n; }
+	static int Damaged(List<Plant> ps) { int n = 0; foreach (Plant p in ps) if (p != null && (p.mold < 20f || p.health < 40f)) n++; return n; }
+	int Measured(List<Plant> ps) { int n = 0; if (rover == null) return 0; foreach (Plant p in ps) if (p != null && rover.measured.Contains(p)) n++; return n; }
+
 	static readonly string[] Verbs = { "harvest the {0}", "pick the {0} in this plot", "go harvest the {0}", "collect the ripe {0}", "pick all the {0}" };
+	static readonly string[] WeedVerbs = { "treat the weeds in the {0}", "kill the weeds in this plot", "go clear the weeds with the UV light", "get rid of the weeds around the {0}", "treat every weed in the {0} rows" };
+	static readonly string[] WaterVerbs = { "check the soil moisture of the {0}", "measure the moisture of every plant", "go test the soil in the {0}", "see which {0} need water", "take a moisture reading at each plant" };
 	string TaskSentence(string crop)
 	{
 		string c = crop.ToLowerInvariant();
 		string plural = c.Contains("tomato") ? "tomatoes" : c.Contains("pepper") ? "peppers" : c.Contains("corn") ? "corn" : c + "s";
-		return string.Format(Verbs[rng.Next(Verbs.Length)], plural);
+		string[] verbs = TaskKind == "weeds" ? WeedVerbs : TaskKind == "moisture" ? WaterVerbs : Verbs;
+		return string.Format(verbs[rng.Next(verbs.Length)], plural);
 	}
 
 	static string Num(float f) { return f.ToString("0.###", CultureInfo.InvariantCulture); }

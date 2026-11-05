@@ -722,6 +722,20 @@ public class GraphicsSettings : MonoBehaviour
 			}
 			Debug.Log("[EnterFarm] robot " + (choice != null ? choice.robot.name : "none") + " for " + wanted);
 		}
+		//a humanoid (wanted starts with "Hum"): the walking robot without a tractor,
+		//not the training or animation-mode ones
+		bool wantHuman = !string.IsNullOrEmpty(wanted) && wanted.StartsWith("Hum", StringComparison.OrdinalIgnoreCase);
+		if (wantHuman)
+		{
+			choice = null;
+			foreach (RobotInfo ri in infos)
+			{
+				if (!ri.humanoid || ri.training || ri.includeTractor || ri.animMode || ri.robot == null) continue;
+				if (ri.robot.GetComponent<HumanoidRobot>() == null) continue;
+				if (choice == null || ri.name.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0) choice = ri;
+			}
+			Debug.Log("[EnterFarm] humanoid " + (choice != null ? choice.name + " / " + choice.robot.name : "none"));
+		}
 		if (choice == null || PathMaker.Instance == null)
 		{
 			EnterFarmError = "no rover";
@@ -752,11 +766,11 @@ public class GraphicsSettings : MonoBehaviour
 		coords.LoadCoords();
 
 		//farm: wait for the rover to spawn and the props to finish placing
-		while ((PathMaker.Instance.rover == null) && Time.unscaledTime < deadline) yield return null;
+		while ((wantHuman ? PathMaker.Instance.humanoidRobot == null : PathMaker.Instance.rover == null) && Time.unscaledTime < deadline) yield return null;
 		ObjectPlacer placer = UnityEngine.Object.FindObjectOfType<ObjectPlacer>();
 		while (placer != null && !placer.finished && Time.unscaledTime < deadline) yield return null;
 		yield return new WaitForSecondsRealtime(3f);
-		if (PathMaker.Instance.rover == null)
+		if (wantHuman ? PathMaker.Instance.humanoidRobot == null : PathMaker.Instance.rover == null)
 		{
 			EnterFarmError = "the rover never spawned";
 			yield break;

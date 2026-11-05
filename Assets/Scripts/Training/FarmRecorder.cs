@@ -31,7 +31,13 @@ public class FarmRecorder : MonoBehaviour
 	public const int SourceExpert = 0, SourceRandom = 1, SourcePolicy = 2;
 
 	public DebugRover rover;
+	public HumanoidRobot human; //recorded instead of a rover (kinematic: velocities come from positions)
 	public Camera cam;
+	Vector3 humanPrevPos;
+	float humanPrevHeading;
+	bool humanHavePos;
+
+	Transform Body { get { return rover != null ? rover.transform : human != null ? human.transform : null; } }
 	public int size = 128;
 	public float hz = 10f;
 
@@ -82,6 +88,17 @@ public class FarmRecorder : MonoBehaviour
 		return fr;
 	}
 
+	public static FarmRecorder Attach(HumanoidRobot h, int size, float hz)
+	{
+		FarmRecorder fr = h.GetComponent<FarmRecorder>();
+		if (fr == null) fr = h.gameObject.AddComponent<FarmRecorder>();
+		fr.human = h;
+		fr.size = size;
+		fr.hz = hz;
+		fr.Setup();
+		return fr;
+	}
+
 	void Setup()
 	{
 		if (cam != null) return;
@@ -125,7 +142,7 @@ public class FarmRecorder : MonoBehaviour
 		cam.cullingMask = (main != null ? main.cullingMask : ~0) & ~(1 << 5); //no UI
 		cam.clearFlags = main != null ? main.clearFlags : CameraClearFlags.Skybox;
 		cam.backgroundColor = main != null ? main.backgroundColor : Color.grey;
-		Debug.Log("[FarmRecorder] camera on " + rover.name + " at " + go.transform.localPosition + ", " + size + "x" + size + " at " + hz + " Hz");
+		Debug.Log("[FarmRecorder] camera on " + Body.name + " at " + go.transform.localPosition + ", " + size + "x" + size + " at " + hz + " Hz");
 	}
 
 	//Start writing an episode. dir null = live only (frames go to onFrame, no files).
@@ -150,6 +167,7 @@ public class FarmRecorder : MonoBehaviour
 		accum = 0f;
 		startTime = Time.time;
 		havePrev = false;
+		humanHavePos = false;
 		fixedCount = 0;
 		fixedPerFrame = Mathf.Max(1, Mathf.RoundToInt(1f / (hz * Time.fixedDeltaTime)));
 	}
@@ -171,10 +189,16 @@ public class FarmRecorder : MonoBehaviour
 	//holds in simulated time whatever the frame rate or Time.timeScale
 	void FixedUpdate()
 	{
-		if (steps == null || rover == null) return;
-		Rigidbody rb = rover.rb;
-		Vector3 vel = rb != null ? rb.velocity : Vector3.zero;
+		if (steps == null || (rover == null && human == null)) return;
+		Vector3 vel = Vector3.zero;
+		if (rover != null && rover.rb != null) vel = rover.rb.velocity;
 		if (fixedCount++ % fixedPerFrame != 0) return;
+		if (human != null)
+		{
+			Vector3 pos = human.transform.position;
+			vel = humanHavePos ? (pos - humanPrevPos) * hz : Vector3.zero;
+			humanPrevPos = pos;
+		}
 		Capture(vel);
 	}
 
@@ -223,27 +247,35 @@ public class FarmRecorder : MonoBehaviour
 
 	void FillRow(Vector3 vel)
 	{
-		Transform tr = rover.transform;
-		Rigidbody rb = rover.rb;
+		Transform tr = Body;
+		Rigidbody rb = rover != null ? rover.rb : null;
 		float heading = tr.eulerAngles.y;
+		float yawRate = rb != null ? rb.angularVelocity.y : 0f;
+		if (human != null)
+		{
+			yawRate = humanHavePos ? Mathf.DeltaAngle(humanPrevHeading, heading) * Mathf.Deg2Rad * hz : 0f;
+			humanPrevHeading = heading;
+			humanHavePos = true;
+		}
 		Quaternion yawInv = Quaternion.Inverse(Quaternion.Euler(0f, heading, 0f));
 		Vector3 lv = yawInv * vel;
 		float dt = 1f / hz;
 		//accelerometer: specific force in the body frame (gravity included, as a real IMU reads it)
 		Vector3 acc = havePrev ? (vel - prevVel) / dt : Vector3.zero;
 		Vector3 imuA = tr.InverseTransformDirection(acc - Physics.gravity);
-		Vector3 imuG = rb != null ? tr.InverseTransformDirection(rb.angularVelocity) : Vector3.zero;
+		Vector3 imuG = rb != null ? tr.InverseTransformDirection(rb.angularVelocity) : new Vector3(0f, yawRate, 0f);
 		prevVel = vel;
 		havePrev = true;
 
 		//target waypoint, in the robot's frame
 		float tdx = 0f, tdz = 0f, tdist = 0f, tkind = 0f;
-		PathMaker.Waypoint wp = rover.currentWaypoint;
+		PathMaker.Waypoint wp = rover != null ? rover.currentWaypoint : human.currentWaypoint;
 		if (wp != null)
 		{
 			Vector3 d = yawInv * new Vector3(wp.pos.x - tr.position.x, 0f, wp.pos.y - tr.position.z);
 			tdx = d.x; tdz = d.z; tdist = d.magnitude;
-			tkind = wp.pickFruit ? 2f : wp.checkWater ? (wp.aimOnly ? 4f : 3f) : 1f;
+			//1 drive, 2 pick fruit, 3 drive to a plant to test, 4 aim the probe, 5 drive with the UV light on
+			tkind = wp.pickFruit ? 2f : wp.checkWater ? (wp.aimOnly ? 4f : 3f) : wp.light ? 5f : 1f;
 		}
 
 		//what is in view, from the plants' own labels (Plant.desired: crop or weed)
@@ -262,23 +294,25 @@ public class FarmRecorder : MonoBehaviour
 			if (p.desired) { crops++; fruit += LiveFruit(p); } else weeds++;
 		}
 
-		RobotArm arm = rover.robotArm;
+		RobotArm arm = rover != null ? rover.robotArm : null;
+		bool busy = human != null ? human.harvesting : arm != null && arm.harvesting;
 		int i = 0;
 		row[i++] = Step;
 		row[i++] = Time.time - startTime;
 		row[i++] = tr.position.x; row[i++] = tr.position.y; row[i++] = tr.position.z;
 		row[i++] = heading;
 		row[i++] = lv.z; row[i++] = lv.x;
-		row[i++] = rb != null ? rb.angularVelocity.y : 0f;
+		row[i++] = yawRate;
 		row[i++] = imuA.x; row[i++] = imuA.y; row[i++] = imuA.z;
 		row[i++] = imuG.x; row[i++] = imuG.y; row[i++] = imuG.z;
-		row[i++] = rover.charge;
+		row[i++] = rover != null ? rover.charge : 100f;
 		row[i++] = execForward; row[i++] = execTurn; row[i++] = execLight ? 1f : 0f;
-		row[i++] = rover.expertForward; row[i++] = rover.expertTurn; row[i++] = rover.expertLight ? 1f : 0f;
+		if (rover != null) { row[i++] = rover.expertForward; row[i++] = rover.expertTurn; row[i++] = rover.expertLight ? 1f : 0f; }
+		else { row[i++] = human.expertForward; row[i++] = human.expertTurn; row[i++] = 0f; }
 		row[i++] = source;
-		row[i++] = arm != null && arm.harvesting ? 1f : 0f;
+		row[i++] = busy ? 1f : 0f;
 		row[i++] = arm != null ? arm.stage : -1f;
-		row[i++] = rover.basket != null ? rover.basket.weight : 0f;
+		row[i++] = rover != null && rover.basket != null ? rover.basket.weight : 0f;
 		row[i++] = picked;
 		row[i++] = tdx; row[i++] = tdz; row[i++] = tdist; row[i++] = tkind;
 		row[i++] = PathMaker.Instance != null && PathMaker.Instance.waypoints != null ? PathMaker.Instance.waypoints.Count : 0;

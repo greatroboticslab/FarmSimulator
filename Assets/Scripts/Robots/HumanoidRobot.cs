@@ -66,6 +66,9 @@ public class HumanoidRobot : MonoBehaviour
 	//cached ground-ray mask; LayerMask.GetMask is a string lookup
 	static int notHumanoidMask;
 	public PathMaker.Waypoint currentWaypoint;
+	//outside driver (FarmDataGen), same idea as DebugRover.netControlled
+	[System.NonSerialized] public bool netControlled;
+	[System.NonSerialized] public float netForward, netTurn, expertForward, expertTurn;
 	public bool gotWaypoint;
 	public bool wantsToTeleport;
 	public float heading;
@@ -1541,9 +1544,18 @@ public class HumanoidRobot : MonoBehaviour
 			}
 			else {
 				MoveUpdate();
+				//the autopilot's command is kept as the expert label; an outside driver
+				//(FarmDataGen: a live policy or a random detour) replaces it, except
+				//while the hands are picking
+				expertForward = forward;
+				expertTurn = leftRight;
+				if(netControlled && !harvesting) {
+					forward = netForward;
+					leftRight = netTurn;
+				}
 			}
-			
-			
+
+
 			CopySkeleton(actor.refSkeleton);
 			//rotation += leftRight*Time.deltaTime*turnSpeed;
 			//transform.Rotate(new Vector3(0,rotation,0), Space.Self);

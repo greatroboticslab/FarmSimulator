@@ -72,6 +72,10 @@ public class HumanoidRobot : MonoBehaviour
 	//a policy turn command of +-1 turns at this share of turnSpeed (90 deg/s would swing 1.8 deg per 50 Hz decision,
 	//past the 1.2 deg aim a pick needs); the autopilot itself turns at about 10 deg/s near a plant
 	[System.NonSerialized] public float netTurnScale = 1f / 3f;
+	//the autopilot backs away from a fruit plant it is closer than this (m) before aiming at it
+	[System.NonSerialized] public float pickStepBack = 0.6f;
+	float lastCartLog;
+	int missesInRow;
 	public bool gotWaypoint;
 	public bool wantsToTeleport;
 	public float heading;
@@ -810,6 +814,8 @@ public class HumanoidRobot : MonoBehaviour
 		harvesting = true;
 		currentCrop = p;
 		currentFruit = 0;
+		missesInRow = 0;
+		timeOnFruit = 0;
 		desiredGrip = 1.0f;
 		if(currentCrop.fruits[currentFruit].GetComponent<FruitBody>().weight < 0.4f) {
 			desiredGrip = 2.0f;
@@ -874,7 +880,9 @@ public class HumanoidRobot : MonoBehaviour
 	//Run this update while harvesting
 	public void HarvestUpdate() {
 		
-		if(Vector3.Distance(transform.position, basketRover.transform.position) <= 3.0f) {
+		//same reach as the check that starts a pick (3.2 m): with 3.0 here, a cart parked 3.0-3.2 m away
+		//left the humanoid kneeling for the rest of the episode, and the per-fruit timeout below never ran
+		if(basketRover.FlatDistance(transform.position) <= 3.2f) {
 			readyToHarvest = true;
 		}
 		
@@ -968,22 +976,28 @@ public class HumanoidRobot : MonoBehaviour
 					reachedFruit = false;
 					currentCrop.fruits[currentFruit].GetComponent<FruitBody>().Detach();
 					currentFruit += 1;
+					missesInRow = 0;
 					if(currentFruit >= currentCrop.fruits.Count) {
 						harvesting = false;
 						transform.rotation = Quaternion.identity;
 					}
 					timeOnFruit = 0;
-					
-					
+
+
 				}
-				
+
 			}
-			//Ran out of time on this fruit
-			if(timeOnFruit > maxTimePerFruit) {
-				
+			//Ran out of time on this fruit. Successful grabs take a median 5 s and 75% finish within 9 s
+			//(11-06, 158 picks), so 8 s per fruit, and give up on the plant after two misses in a row:
+			//15 s for each of ~10 fruits used to keep the humanoid kneeling for the rest of the episode
+			if(timeOnFruit > Mathf.Min(maxTimePerFruit, 8f)) {
+
 				currentFruit += 1;
-				
-				if(currentFruit >= currentCrop.fruits.Count) {
+				missesInRow += 1;
+				hasFruit = false;
+				reachedFruit = false;
+
+				if(currentFruit >= currentCrop.fruits.Count || missesInRow >= 2) {
 					harvesting = false;
 					transform.rotation = Quaternion.identity;
 				}
@@ -1355,7 +1369,16 @@ public class HumanoidRobot : MonoBehaviour
 							if(basketRover == null) {
 								currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
 							}
-							else if(Vector3.Distance(transform.position, basketRover.transform.position) <= 3.2f) {
+							else if(basketRover.FlatDistance(transform.position) > 3.2f) {
+								//waiting at the plant for the basket cart: say where it is every 2 s
+								if(Time.time - lastCartLog > 2f) {
+									lastCartLog = Time.time;
+									Debug.Log("[HumanoidRobot] waiting for cart: " + basketRover.FlatDistance(transform.position).ToString("F2")
+										+ " m, cart parked " + basketRover.parked + ", cart speed " + (basketRover.rb != null ? basketRover.rb.velocity.magnitude.ToString("F2") : "?")
+										+ ", cart y " + basketRover.transform.position.y.ToString("F2") + " vs humanoid y " + transform.position.y.ToString("F2"));
+								}
+							}
+							else {
 								
 								HarvestCrop(currentWaypoint.plant.GetComponent<Plant>());
 								currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
@@ -1366,6 +1389,18 @@ public class HumanoidRobot : MonoBehaviour
 							currentWaypoint = PathMaker.Instance.GetNextWaypoint(transform.position);
 						}
 						
+					}
+					else if(currentWaypoint.pickFruit && Vector2.Distance(rPos, currentWaypoint.pos) < pickStepBack) {
+						//standing on the plant: the direction to it is undefined there, so the aim check
+						//above can never pass (the robot used to turn in place for the rest of the episode);
+						//step back first
+						forward = -0.6f;
+						leftRight = 0;
+					}
+					else if(currentWaypoint.pickFruit && Vector2.Distance(rPos, currentWaypoint.pos) < 1.5f) {
+						//within reach: stop and turn in place to face the plant instead of walking onto it
+						MoveTo(new Vector3(currentWaypoint.pos.x, 0, currentWaypoint.pos.y));
+						forward = 0;
 					}
 					else {
 						MoveTo(new Vector3(currentWaypoint.pos.x, 0, currentWaypoint.pos.y));
